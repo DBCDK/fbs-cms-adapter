@@ -1,0 +1,16 @@
+{
+  "name": "fbs-cms-adapter",
+  "version": "1.0.0",
+  "description": "Allow for the FBS CMS API to be called directly by a client/browser using a DÅP token",
+  "main": "index.js",
+  "scripts": {
+    "dev": ". ./dev.env && fastify start index.js --watch",
+    "start": "fastify start index.js"
+  },
+  "author": "Frontend @ DBC",
+  "license": "GNU",
+  "dependencies": {
+    "fastify": "^3.18.0",
+    "fastify-cli": "^2.13.0"
+  }
+}
