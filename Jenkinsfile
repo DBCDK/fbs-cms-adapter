@@ -1,7 +1,7 @@
 #!groovy​
 
 def app
-def imageName = 'bibliotekdk-next-api'
+def imageName = 'fbs-cms-adapter'
 def imageLabel = BUILD_NUMBER
 
 pipeline {
