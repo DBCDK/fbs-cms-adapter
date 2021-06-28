@@ -1,5 +1,9 @@
 {
   "name": "fbs-cms-adapter",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DBCDK/fbs-cms-adapter.git"
+  },
   "version": "1.0.0",
   "description": "Allow for the FBS CMS API to be called directly by a client/browser using a DÅP token",
   "main": "index.js",
@@ -8,7 +12,7 @@
     "start": "fastify start index.js"
   },
   "author": "Frontend @ DBC",
-  "license": "GNU",
+  "license": "GPL-3.0-only",
   "dependencies": {
     "fastify": "^3.18.0",
     "fastify-cli": "^2.13.0"
