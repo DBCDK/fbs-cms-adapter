@@ -9,6 +9,7 @@ pipeline {
         label 'devel9-head'
     }
     environment {
+        GITLAB_ID = "1048"
         DOCKER_TAG = "${imageLabel}"
         IMAGE = "${imageName}${env.BRANCH_NAME != 'main' ? "-${env.BRANCH_NAME.toLowerCase()}" : ''}:${imageLabel}"
         DOCKER_COMPOSE_NAME = "compose-${IMAGE}"
@@ -46,6 +47,32 @@ pipeline {
                         }
                     }
                 } 
+            }
+        }
+        stage("Update staging version number") {
+            agent {
+                docker {
+                    label 'devel9-head'
+                    image "docker-io.dbc.dk/python3-build-image"
+                    alwaysPull true
+                }
+            }
+            when {
+                branch "main"
+            }
+            steps {
+                dir("deploy") {
+                    git(url: "gitlab@gitlab.dbc.dk:frontend/buggi-configuration.git", credentialsId: "gitlab-svi", branch: "staging") // TODO Change gitlab-svi to frontend credentials
+                    sh """#!/usr/bin/env bash
+                        set -xe
+                        rm -rf auto-committer-env
+                        python3 -m venv auto-committer-env
+                        source auto-committer-env/bin/activate
+                        pip install -U pip
+                        pip install git+https://github.com/DBCDK/kube-deployment-auto-committer#egg=deployversioner
+                        set-new-version configuration.yaml ${env.GITLAB_PRIVATE_TOKEN} ${env.GITLAB_ID} ${env.DOCKER_TAG} -b staging
+                    """
+                }
             }
         }
     }
