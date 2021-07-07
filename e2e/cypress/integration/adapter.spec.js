@@ -227,7 +227,7 @@ describe("Testing the FBS CMS adapter", () => {
       });
     });
 
-    it("logins again, when sessionKey is expired", () => {
+    it("logs in again when sessionKey is expired", () => {
       /**
        * Expected flow:
        * 1. Adapter uses token to fetch smaug configuration containing fbs credentials
