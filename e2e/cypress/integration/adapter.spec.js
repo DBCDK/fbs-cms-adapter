@@ -234,8 +234,8 @@ describe("Testing the FBS CMS adapter", () => {
        * 2. smaug configuration is succesfully validated
        * 3. The sessionKey is fetched from redis using the token
        * 4. The url is replaced with value for agencyId
-       * 5. The request is forwarded to Fbs CMS, but it returns 401 due to expired sessionKey
-       * 6. sessionKey is refetched from Fbs using FBS credentials from smaug configuration
+       * 5. The request is forwarded to FBS CMS, but it returns 401 due to expired sessionKey
+       * 6. sessionKey is refetched from FBS using FBS credentials from smaug configuration
        * 7. The request is then forwarded to FBS CMS with succes
        */
 
