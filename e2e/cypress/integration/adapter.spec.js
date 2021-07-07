@@ -31,7 +31,7 @@ describe("Testing the FBS CMS adapter", () => {
       }).then((res) => {
         expect(res.status).to.eq(400);
         expect(res.body).to.deep.include({
-          message: "querystring should have required property 'token'",
+          message: "headers should have required property 'authorization'",
         });
       });
     });
@@ -47,7 +47,10 @@ describe("Testing the FBS CMS adapter", () => {
 
       // Send request to adapter
       cy.request({
-        url: "/external/agencyid/some/path?token=TOKEN",
+        url: "/external/agencyid/some/path",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
         failOnStatusCode: false,
       }).then((res) => {
         expect(res.status).to.eq(403);
@@ -103,6 +106,9 @@ describe("Testing the FBS CMS adapter", () => {
       ].forEach((token) => {
         cy.request({
           url: `/external/agencyid/some/path?token=${token}`,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
           failOnStatusCode: false,
         }).then((res) => {
           expect(res.status).to.eq(403);
@@ -139,7 +145,10 @@ describe("Testing the FBS CMS adapter", () => {
 
       // Send request to adapter
       cy.request({
-        url: "/external/agencyid/some/path?token=TOKEN",
+        url: "/external/agencyid/some/path",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
         failOnStatusCode: false,
       }).then((res) => {
         expect(res.status).to.eq(200);
@@ -178,7 +187,10 @@ describe("Testing the FBS CMS adapter", () => {
       // Send request to adapter
       cy.request({
         method: "POST",
-        url: "/external/agencyid/some/path?token=TOKEN",
+        url: "/external/agencyid/some/path",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
         body: { test: "test" },
         failOnStatusCode: false,
       }).then((res) => {
@@ -217,7 +229,10 @@ describe("Testing the FBS CMS adapter", () => {
 
       // Send request to adapter
       cy.request({
-        url: "/external/agencyid/some/path?token=TOKEN",
+        url: "/external/agencyid/some/path",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
         failOnStatusCode: false,
       }).then((res) => {
         expect(res.status).to.eq(200);
@@ -254,7 +269,10 @@ describe("Testing the FBS CMS adapter", () => {
 
       // Send request to adapter
       cy.request({
-        url: "/external/agencyid/some/path?token=TOKEN",
+        url: "/external/agencyid/some/path",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
         failOnStatusCode: false,
       }).then((res) => {
         expect(res.status).to.eq(200);
@@ -289,7 +307,10 @@ describe("Testing the FBS CMS adapter", () => {
 
       // Send request to adapter
       cy.request({
-        url: "/external/agencyid/patron/patronid/some/path?token=TOKEN",
+        url: "/external/agencyid/patron/patronid/some/path",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
         failOnStatusCode: false,
       }).then((res) => {
         expect(res.status).to.eq(403);
@@ -325,7 +346,10 @@ describe("Testing the FBS CMS adapter", () => {
 
       // Send request to adapter
       cy.request({
-        url: "/external/agencyid/patrons/patronid/some/path?token=TOKEN",
+        url: "/external/agencyid/patrons/patronid/some/path",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
         failOnStatusCode: false,
       }).then((res) => {
         expect(res.status).to.eq(200);
@@ -368,7 +392,10 @@ describe("Testing the FBS CMS adapter", () => {
 
       // Send request to adapter
       cy.request({
-        url: "/external/agencyid/patrons/patronid/some/path?token=TOKEN",
+        url: "/external/agencyid/patrons/patronid/some/path",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
         failOnStatusCode: false,
       }).then((res) => {
         expect(res.status).to.eq(200);
@@ -408,7 +435,10 @@ describe("Testing the FBS CMS adapter", () => {
 
       // Send request to adapter
       cy.request({
-        url: "/external/agencyid/patrons/patronid/some/path?token=TOKEN",
+        url: "/external/agencyid/patrons/patronid/some/path",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
         failOnStatusCode: false,
       }).then((res) => {
         expect(res.status).to.eq(200);
@@ -458,7 +488,10 @@ describe("Testing the FBS CMS adapter", () => {
 
       // Send request to adapter
       cy.request({
-        url: "/external/agencyid/patrons/patronid/some/path?token=TOKEN",
+        url: "/external/agencyid/patrons/patronid/some/path",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
         failOnStatusCode: false,
       }).then((res) => {
         expect(res.status).to.eq(200);
@@ -534,14 +567,11 @@ function mockFetchFbsPatronIdSucces() {
   mockHTTP({
     request: {
       method: "POST",
-      path: "/fbscms/external/some-agencyid/patrons/authenticate/v3",
+      path: "/fbscms/external/some-agencyid/patrons/preauthenticated/v7",
       headers: {
         "x-session": "SOME_VALID_SESSION_KEY",
       },
-      body: {
-        libraryCardNumber: validSmaugUser.id,
-        pincode: validSmaugUser.pin,
-      },
+      body: validSmaugUser.id,
     },
     response: {
       status: 200,
@@ -559,14 +589,11 @@ function mockFetchFbsPatronIdExpiredSessionKey() {
   mockHTTP({
     request: {
       method: "POST",
-      path: "/fbscms/external/some-agencyid/patrons/authenticate/v3",
+      path: "/fbscms/external/some-agencyid/patrons/preauthenticated/v7",
       headers: {
         "x-session": "SOME_EXPIRED_SESSION_KEY",
       },
-      body: {
-        libraryCardNumber: validSmaugUser.id,
-        pincode: validSmaugUser.pin,
-      },
+      body: validSmaugUser.id,
     },
     response: {
       status: 401,

@@ -4,7 +4,7 @@ services:
     image: "${IMAGE}"
     environment:
       - FASTIFY_LOG_LEVEL=info
-      - FASTIFY_PRETTY_LOGS=true
+      - FASTIFY_PRETTY_LOGS=false
     command: bash -c "npx fastify start src/httpmock.js --watch"
   redis:
     image: "redis:alpine"
@@ -12,7 +12,7 @@ services:
     image: "${IMAGE}"
     environment:
       - FASTIFY_LOG_LEVEL=debug
-      - FASTIFY_PRETTY_LOGS=true
+      - FASTIFY_PRETTY_LOGS=false
       - SMAUG_URL=http://http_mock:3000/smaug/configuration
       - FBS_CMS_API_URL=http://http_mock:3000/fbscms
     depends_on:

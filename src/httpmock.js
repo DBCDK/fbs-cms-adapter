@@ -13,6 +13,22 @@ let mocked = [];
 module.exports = async function (fastify, opts) {
   fastify.register(require("fastify-redis"), { url: process.env.REDIS_URL });
 
+  // FBS API require to receive content type application/json
+  // even though the body is a string.
+  // We have to override the default fastify body parser
+  fastify.addContentTypeParser(
+    "application/json",
+    { parseAs: "string" },
+    function (req, body, done) {
+      try {
+        var json = JSON.parse(body);
+        done(null, json);
+      } catch (err) {
+        done(null, body);
+      }
+    }
+  );
+
   // Redis get operation
   fastify.get("/redis", async (request) => {
     const { redis } = fastify;

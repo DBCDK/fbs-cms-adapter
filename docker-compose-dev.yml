@@ -19,7 +19,7 @@ services:
     build: .
     environment:
       - FASTIFY_LOG_LEVEL=debug
-      - FASTIFY_PRETTY_LOGS=false
+      - FASTIFY_PRETTY_LOGS=true
       - SMAUG_URL=http://http_mock:3000/smaug/configuration
       - FBS_CMS_API_URL=http://http_mock:3000/fbscms
       - REDIS_URL=redis://redis
