@@ -48,7 +48,8 @@ function init({ redis, log }) {
       "Failed to fetch session key. This is unexpected"
     );
 
-    throw { code: 500, body: "internal server error" };
+    // Pass error on to the caller
+    throw res;
   }
 
   return { fetch };

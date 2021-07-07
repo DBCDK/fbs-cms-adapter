@@ -50,15 +50,13 @@ function init({ redis, log }) {
         // session key expired
         throw res;
       default:
-        console.log(res);
         log.error(
           { response: res },
           `Failed to fetch patronId. This is unexpected`
         );
-        throw {
-          code: 500,
-          body: "internal server error",
-        };
+
+        // Pass error on to the caller
+        throw res;
     }
   }
   return { fetch };
