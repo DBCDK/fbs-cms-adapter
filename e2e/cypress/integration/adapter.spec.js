@@ -105,7 +105,7 @@ describe("Testing the FBS CMS adapter", () => {
         "TOKEN_WITHOUT_FBS_PASSWORD",
       ].forEach((token) => {
         cy.request({
-          url: `/external/agencyid/some/path?token=${token}`,
+          url: `/external/agencyid/some/path`,
           headers: {
             Authorization: `Bearer ${token}`,
           },
