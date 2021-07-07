@@ -1,0 +1,32 @@
+version: "3"
+services:
+  http_mock:
+    image: "${IMAGE}"
+    environment:
+      - FASTIFY_LOG_LEVEL=info
+      - FASTIFY_PRETTY_LOGS=true
+    command: bash -c "npx fastify start src/httpmock.js --watch"
+  redis:
+    image: "redis:alpine"
+  adapter:
+    image: "${IMAGE}"
+    environment:
+      - FASTIFY_LOG_LEVEL=debug
+      - FASTIFY_PRETTY_LOGS=true
+      - SMAUG_URL=http://http_mock:3000/smaug/configuration
+      - FBS_CMS_API_URL=http://http_mock:3000/fbscms
+    depends_on:
+      - http_mock
+      - redis
+  e2e:
+    ipc: host ## Prevent Docker Crash in Cypress (https://github.com/cypress-io/cypress/issues/350)
+    image: docker.dbc.dk/cypress:latest
+    volumes:
+      - './e2e:/app/e2e'
+    depends_on:
+      - adapter
+    environment:
+      - CYPRESS_baseUrl=http://adapter:3000
+      - CYPRESS_mockHTTPUrl=http://http_mock:3000
+    command: bash -c "npm run cy"
+  

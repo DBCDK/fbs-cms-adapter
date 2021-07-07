@@ -1,0 +1,34 @@
+version: "3"
+services:
+  http_mock:
+    build: .
+    environment:
+      - FASTIFY_LOG_LEVEL=error
+      - FASTIFY_PRETTY_LOGS=true
+      - REDIS_URL=redis://redis
+    volumes:
+      - './src:/home/node/app/src'
+    command: bash -c "npx fastify start src/httpmock.js --watch"
+    depends_on:
+      - redis
+    ports:
+      - "3333:3000"
+  redis:
+    image: "redis:alpine"
+  adapter:
+    build: .
+    environment:
+      - FASTIFY_LOG_LEVEL=debug
+      - FASTIFY_PRETTY_LOGS=false
+      - SMAUG_URL=http://http_mock:3000/smaug/configuration
+      - FBS_CMS_API_URL=http://http_mock:3000/fbscms
+      - REDIS_URL=redis://redis
+    ports:
+      - "3000:3000"
+    volumes:
+      - './src:/home/node/app/src'
+    depends_on:
+      - http_mock
+      - redis
+    command: bash -c "npx fastify start src/server.js --watch"
+  
