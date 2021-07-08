@@ -7,11 +7,12 @@
 "use strict";
 
 const isMatch = require("lodash/isMatch");
+const initRedis = require("./clients/redis");
 
 let mocked = [];
 
 module.exports = async function (fastify, opts) {
-  fastify.register(require("fastify-redis"), { url: process.env.REDIS_URL });
+  const { redis } = initRedis(fastify);
 
   // FBS API require to receive content type application/json
   // even though the body is a string.
@@ -31,14 +32,12 @@ module.exports = async function (fastify, opts) {
 
   // Redis get operation
   fastify.get("/redis", async (request) => {
-    const { redis } = fastify;
     const val = await redis.get(request.query.key);
     return val;
   });
 
   // Redis set operation
   fastify.post("/redis", async (request) => {
-    const { redis } = fastify;
     await redis.set(request.body.key, request.body.value);
     return "OK";
   });
@@ -53,7 +52,6 @@ module.exports = async function (fastify, opts) {
   // Reset Redis and Mocked requests
   fastify.post("/reset", async (request) => {
     mocked = [];
-    const { redis } = fastify;
     await redis.flushall();
     return "ok";
   });

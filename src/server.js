@@ -1,5 +1,11 @@
 "use strict";
 
+const initRedis = require("./clients/redis");
+const initSmaug = require("./clients/smaug");
+const initProxy = require("./clients/proxy");
+const initPreauthenticated = require("./clients/preauthenticated");
+const initFbsLogin = require("./clients/fbslogin");
+
 // JSON Schema for validating header
 const schema = {
   headers: {
@@ -11,14 +17,7 @@ const schema = {
   },
 };
 
-const initSmaug = require("./clients/smaug");
-const initProxy = require("./clients/proxy");
-const initPreauthenticated = require("./clients/preauthenticated");
-const initFbsLogin = require("./clients/fbslogin");
-
 module.exports = async function (fastify, opts) {
-  fastify.register(require("fastify-redis"), { url: process.env.REDIS_URL });
-
   fastify.route({
     method: ["GET", "POST", "PUT", "DELETE"],
     url: "*",
@@ -26,15 +25,16 @@ module.exports = async function (fastify, opts) {
     handler: async (request, reply) => {
       try {
         // Initialize clients
+        const redis = initRedis(request);
         const smaug = initSmaug(request);
         const proxy = initProxy(request);
         const preauthenticated = initPreauthenticated({
           log: request.log,
-          redis: fastify.redis,
+          redis,
         });
         const fbsLogin = initFbsLogin({
           log: request.log,
-          redis: fastify.redis,
+          redis,
         });
 
         // The smaug token extracted from authorization header

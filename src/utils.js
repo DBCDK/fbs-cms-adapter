@@ -38,37 +38,6 @@ async function fetcher(url, options, log) {
   };
 }
 
-/**
- * Wraps redis get
- * Adds some error handling as well as logging
- */
-async function redisGet(key, { namespace, redis, log }) {
-  try {
-    const res = await redis.get(`${namespace}:${key}`);
-    log.info(`Redis: GET ${namespace}:${key}->${res}`);
-    return res;
-  } catch (error) {
-    log.error(error);
-    throw { code: 500, body: "internal server error" };
-  }
-}
-
-/**
- * Wraps redis set
- * Adds some error handling as well as logging
- */
-async function redisSet(key, value, { namespace, redis, log }) {
-  try {
-    await redis.set(`${namespace}:${key}`, value);
-    log.info(`Redis: SET ${namespace}:${key}->${value}`);
-  } catch (error) {
-    log.error(error);
-    throw { code: 500, body: "internal server error" };
-  }
-}
-
 module.exports = {
   fetcher,
-  redisGet,
-  redisSet,
 };

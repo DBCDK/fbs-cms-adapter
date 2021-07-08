@@ -1,4 +1,4 @@
-const { fetcher, redisGet, redisSet } = require("../utils");
+const { fetcher } = require("../utils");
 
 // Redis namespace
 const namespace = "sessionkey";
@@ -13,8 +13,7 @@ function init({ redis, log }) {
   async function fetch({ token, configuration, skipCache = false }) {
     const { agencyid, username, password } = configuration.fbs;
 
-    const cachedVal =
-      !skipCache && (await redisGet(token, { redis, log, namespace }));
+    const cachedVal = !skipCache && (await redis.get(token, { namespace }));
 
     if (cachedVal) {
       return cachedVal;
@@ -35,9 +34,7 @@ function init({ redis, log }) {
     const sessionKey = res.body.sessionKey;
 
     if (res.code === 200 && sessionKey) {
-      await redisSet(token, sessionKey, {
-        redis,
-        log,
+      await redis.set(token, sessionKey, {
         namespace,
       });
       return sessionKey;

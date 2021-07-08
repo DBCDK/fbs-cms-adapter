@@ -1,4 +1,4 @@
-const { fetcher, redisGet, redisSet } = require("../utils");
+const { fetcher } = require("../utils");
 
 // Redis namespace
 const namespace = "patronid";
@@ -19,8 +19,7 @@ function init({ redis, log }) {
     const agencyid = configuration.fbs.agencyid;
     const userId = configuration.user.id;
 
-    const redisVal =
-      !skipCache && (await redisGet(token, { redis, log, namespace }));
+    const redisVal = !skipCache && (await redis.get(token, { namespace }));
 
     if (redisVal) {
       return redisVal;
@@ -40,9 +39,7 @@ function init({ redis, log }) {
     switch (res.code) {
       case 200:
         const patronId = res.body.patron.patronId + "";
-        await redisSet(token, patronId, {
-          redis,
-          log,
+        await redis.set(token, patronId, {
           namespace,
         });
         return patronId;
