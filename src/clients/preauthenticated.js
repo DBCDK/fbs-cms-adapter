@@ -38,7 +38,11 @@ function init({ redis, log }) {
     let res = await fetcher(path, options, log);
     switch (res.code) {
       case 200:
-        const patronId = res.body.patron.patronId + "";
+        const patronId = res.body.patron && res.body.patron.patronId + "";
+        if (!patronId) {
+          log.error(`Failed to fetch patronId. User was not authenticated`);
+          throw res;
+        }
         await redis.set(token, patronId, {
           namespace,
         });
