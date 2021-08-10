@@ -6,7 +6,7 @@ const initProxy = require("./clients/proxy");
 const initPreauthenticated = require("./clients/preauthenticated");
 const initFbsLogin = require("./clients/fbslogin");
 
-// JSON Schema for validating header
+// JSON Schema for validating the request headers
 const schema = {
   headers: {
     type: "object",
@@ -17,6 +17,9 @@ const schema = {
   },
 };
 
+/**
+ * All requests to the adapter is handled in this route handler
+ */
 module.exports = async function (fastify, opts) {
   fastify.route({
     method: ["GET", "POST", "PUT", "DELETE"],
