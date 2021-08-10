@@ -10,7 +10,7 @@ Here are a couple of examples on how to call the adapter:
 
 | Description | Request | Response Body | Response Status Code |
 |-------------|---------|---------------| -------------------- |
-| The adapter inserts a proper agencyid when call is proxied to the FBS CMS API. |`curl -H "Authorization: Bearer ANONYMOUS_TOKEN" "{ADAPTER_HOST}:3000/external/agencyid/catalog/holdings/v3?recordid=51701763"`|  `[{"recordId":"51701763","reservable":false,"reservations":0,"holdings":[]}]`| 200 |
+| The adapter inserts a proper agencyid when call is proxied to the FBS CMS API. |`curl -H "Authorization: Bearer ANONYMOUS_TOKEN" "{ADAPTER_HOST}:3000/external/agencyid/catalog/holdings/v3?recordid=51701763"`|  `[{"recordId":"51701763", "reservable":false, "reservations":0, "holdings": []}]`| 200 |
 | The adapter inserts a proper agencyid and patronid when call is proxied to the FBS CMS API.  |`curl -H "Authorization: Bearer AUTHENTICATED_TOKEN" "{ADAPTER_HOST}:3000/external/v1/agencyid/patrons/patronid/reservations/v2"`|  `[...]`| 200 |
 
 For the most of the time the adapter will pass raw responses from the FBS CMS API back to the caller. In some circumstances however, the adapter itself return error messages:
