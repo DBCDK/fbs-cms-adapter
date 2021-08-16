@@ -7,13 +7,11 @@
 "use strict";
 
 const isMatch = require("lodash/isMatch");
-const initRedis = require("./clients/redis");
+const createRedis = require("./clients/redis");
 
 let mocked = [];
 
 module.exports = async function (fastify, opts) {
-  const { redis } = initRedis(fastify);
-
   // FBS API require to receive content type application/json
   // even though the body is a string.
   // We have to override the default fastify body parser
@@ -32,13 +30,23 @@ module.exports = async function (fastify, opts) {
 
   // Redis get operation
   fastify.get("/redis", async (request) => {
+    const { redis } = createRedis({
+      log: fastify.log,
+      namespace: request.query.namespace,
+    });
     const val = await redis.get(request.query.key);
+    await redis.disconnect();
     return val;
   });
 
   // Redis set operation
   fastify.post("/redis", async (request) => {
+    const { redis } = createRedis({
+      log: fastify.log,
+      namespace: request.body.namespace,
+    });
     await redis.set(request.body.key, request.body.value);
+    await redis.disconnect();
     return "OK";
   });
 
@@ -52,7 +60,18 @@ module.exports = async function (fastify, opts) {
   // Reset Redis and Mocked requests
   fastify.post("/reset", async (request) => {
     mocked = [];
-    await redis.flushall();
+    // redis namespaces to wipe
+    const namespaces = request.body.namespaces;
+    console.log("namespaces", namespaces);
+    await Promise.all(
+      namespaces.map(async (namespace) => {
+        const { redis } = createRedis({
+          log: fastify.log,
+          namespace,
+        });
+        await redis.flushall();
+      })
+    );
     return "ok";
   });
 
@@ -73,6 +92,11 @@ module.exports = async function (fastify, opts) {
       if (match) {
         return reply.code(match.response.status).send(match.response.body);
       }
+
+      request.log.error({
+        msg: "no mock matching request",
+        request: { body, headers, method, query, path },
+      });
 
       reply.code(500).send({ message: "no mock matching request" });
     },

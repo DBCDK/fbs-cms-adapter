@@ -1,8 +1,5 @@
 const { fetcher } = require("../utils");
 
-// Redis namespace
-const namespace = "patronid";
-
 /**
  * Initializes the preauthenticated fetcher
  */
@@ -19,7 +16,7 @@ function init({ redis, log }) {
     const agencyid = configuration.fbs.agencyid;
     const userId = configuration.user.id;
 
-    const redisVal = !skipCache && (await redis.get(token, { namespace }));
+    const redisVal = !skipCache && (await redis.get(token));
 
     if (redisVal) {
       return redisVal;
@@ -43,9 +40,7 @@ function init({ redis, log }) {
           log.error(`Failed to fetch patronId. User was not authenticated`);
           throw res;
         }
-        await redis.set(token, patronId, {
-          namespace,
-        });
+        await redis.set(token, patronId);
         return patronId;
       case 401:
         // session key expired

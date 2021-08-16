@@ -1,6 +1,6 @@
 "use strict";
 
-const initRedis = require("./clients/redis");
+const createRedis = require("./clients/redis");
 const initSmaug = require("./clients/smaug");
 const initProxy = require("./clients/proxy");
 const initPreauthenticated = require("./clients/preauthenticated");
@@ -21,23 +21,41 @@ const schema = {
  * All requests to the adapter is handled in this route handler
  */
 module.exports = async function (fastify, opts) {
+  const appLogger = fastify.log;
+
+  // Establish connections to redis for namespaces
+  const redisClientPatronId = createRedis({
+    log: appLogger,
+    namespace: "patronid",
+  });
+  const redisClientSessionKey = createRedis({
+    log: appLogger,
+    namespace: "sessionkey",
+  });
+
   fastify.route({
     method: ["GET", "POST", "PUT", "DELETE"],
     url: "*",
     schema,
     handler: async (request, reply) => {
       try {
-        // Initialize clients
-        const redis = initRedis(request);
+        // Initialize clients with logger for this request
+        const requestLogger = request.log;
+        const redisPatronId = redisClientPatronId.init({
+          log: requestLogger,
+        });
+        const redisSessionKey = redisClientSessionKey.init({
+          log: requestLogger,
+        });
         const smaug = initSmaug(request);
         const proxy = initProxy(request);
         const preauthenticated = initPreauthenticated({
-          log: request.log,
-          redis,
+          log: requestLogger,
+          redis: redisPatronId,
         });
         const fbsLogin = initFbsLogin({
-          log: request.log,
-          redis,
+          log: requestLogger,
+          redis: redisSessionKey,
         });
 
         // The smaug token extracted from authorization header

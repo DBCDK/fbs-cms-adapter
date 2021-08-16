@@ -1,63 +1,66 @@
 const Redis = require("ioredis");
 
-const redis = process.env.REDIS_CLUSTER_HOST
-  ? new Redis.Cluster([{ host: process.env.REDIS_CLUSTER_HOST }])
-  : new Redis({
-      host: process.env.REDIS_HOST,
-    });
-let ready = false;
-redis.on("ready", function () {
-  ready = true;
-});
-redis.on("close", function () {
-  ready = false;
-});
+const options = {
+  host: process.env.REDIS_CLUSTER_HOST || process.env.REDIS_HOST,
+  maxRetriesPerRequest: 5,
+};
 
 /**
- * Initializes redis
+ * Creates a Redis connection pool
  */
-function init({ log }) {
-  /**
-   * Wraps redis get
-   * Adds some error handling as well as logging
-   */
-  async function get(key, { namespace }) {
-    if (!ready) {
-      log.error(
-        `Redis: GET ${namespace}:${key} NOT CONNECTED ${process.env.REDIS_HOST}`
-      );
-      throw { code: 500, body: "internal server error" };
-    }
-    try {
-      const res = await redis.get(`${namespace}:${key}`);
-      log.info(`Redis: GET ${namespace}:${key}->${res}`);
-      return res;
-    } catch (error) {
-      log.error(error);
-      throw { code: 500, body: "internal server error" };
-    }
-  }
+function createRedis({ log: appLogger, namespace }) {
+  const redis = process.env.REDIS_CLUSTER_HOST
+    ? new Redis.Cluster([{ ...options, keyPrefix: namespace }])
+    : new Redis({ ...options, keyPrefix: namespace });
+
+  redis.on("error", (e) => {
+    appLogger.error({ msg: "Redis error", stack: e.stack, namespace });
+  });
 
   /**
-   * Wraps redis set
-   * Adds some error handling as well as logging
+   * Initializes redis for a request
+   * We need this in order to have request id logged automatically
    */
-  async function set(key, value, { namespace }) {
-    if (!ready) {
-      log.error(
-        `Redis: SET ${namespace}:${key}->${value} NOT CONNECTED ${process.env.REDIS_HOST}`
-      );
-      throw { code: 500, body: "internal server error" };
+  function init({ log }) {
+    /**
+     * Wraps redis get
+     * Adds some error handling as well as logging
+     */
+    async function get(key) {
+      try {
+        const res = await redis.get(key);
+        log.info(`Redis: GET ${namespace}:${key}->${res}`);
+        return res;
+      } catch (error) {
+        log.error(
+          `Redis: GET ${namespace}:${key} FAILED ${process.env.REDIS_HOST}`
+        );
+        log.error(error);
+        throw { code: 500, body: "internal server error" };
+      }
     }
-    try {
-      await redis.set(`${namespace}:${key}`, value);
-      log.info(`Redis: SET ${namespace}:${key}->${value}`);
-    } catch (error) {
-      log.error(error);
-      throw { code: 500, body: "internal server error" };
+
+    /**
+     * Wraps redis set
+     * Adds some error handling as well as logging
+     */
+    async function set(key, value) {
+      try {
+        await redis.set(key, value);
+        log.info(`Redis: SET ${namespace}:${key}->${value}`);
+      } catch (error) {
+        log.error(
+          `Redis: SET ${namespace}:${key} FAILED ${process.env.REDIS_HOST}`
+        );
+        log.error(error);
+        throw { code: 500, body: "internal server error" };
+      }
     }
+
+    return { get, set };
   }
 
-  return { get, set, redis };
+  return { init, redis };
 }
-module.exports = init;
+
+module.exports = createRedis;

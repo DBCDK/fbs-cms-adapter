@@ -1,8 +1,5 @@
 const { fetcher } = require("../utils");
 
-// Redis namespace
-const namespace = "sessionkey";
-
 /**
  * Initializes the fbslogin fetcher
  */
@@ -13,7 +10,7 @@ function init({ redis, log }) {
   async function fetch({ token, configuration, skipCache = false }) {
     const { agencyid, username, password } = configuration.fbs;
 
-    const cachedVal = !skipCache && (await redis.get(token, { namespace }));
+    const cachedVal = !skipCache && (await redis.get(token));
 
     if (cachedVal) {
       return cachedVal;
@@ -34,9 +31,7 @@ function init({ redis, log }) {
     const sessionKey = res.body.sessionKey;
 
     if (res.code === 200 && sessionKey) {
-      await redis.set(token, sessionKey, {
-        namespace,
-      });
+      await redis.set(token, sessionKey);
       return sessionKey;
     }
 
