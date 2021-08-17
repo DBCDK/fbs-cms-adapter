@@ -21,6 +21,11 @@ const schema = {
  * All requests to the adapter is handled in this route handler
  */
 module.exports = async function (fastify, opts) {
+  // route to check if server is running
+  fastify.get("/", async (request) => {
+    return "ok";
+  });
+
   const appLogger = fastify.log;
 
   // Establish connections to redis for namespaces
