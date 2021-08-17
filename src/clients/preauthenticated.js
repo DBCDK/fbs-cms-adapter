@@ -1,3 +1,5 @@
+const HttpsProxyAgent = require("https-proxy-agent");
+
 const { fetcher } = require("../utils");
 
 /**
@@ -31,6 +33,10 @@ function init({ redis, log }) {
       },
       body: userId,
     };
+
+    if (process.env.HTTPS_PROXY) {
+      options.agent = new HttpsProxyAgent(process.env.HTTPS_PROXY);
+    }
 
     let res = await fetcher(path, options, log);
     switch (res.code) {

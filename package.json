@@ -16,7 +16,7 @@
   "dependencies": {
     "fastify": "^3.18.0",
     "fastify-cli": "^2.13.0",
-    "http-proxy-agent": "^4.0.1",
+    "https-proxy-agent": "^5.0.0",
     "ioredis": "^4.27.6",
     "lodash": "^4.17.21",
     "node-fetch": "^2.6.1"

@@ -1,4 +1,4 @@
-const HttpProxyAgent = require("http-proxy-agent");
+const HttpsProxyAgent = require("https-proxy-agent");
 
 const { fetcher } = require("../utils");
 
@@ -28,7 +28,7 @@ function init(request) {
     };
 
     if (process.env.HTTPS_PROXY) {
-      options.agent = new HttpProxyAgent(process.env.HTTPS_PROXY);
+      options.agent = new HttpsProxyAgent(process.env.HTTPS_PROXY);
     }
 
     delete options.headers.host;

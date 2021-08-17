@@ -1,3 +1,5 @@
+const HttpsProxyAgent = require("https-proxy-agent");
+
 const { fetcher } = require("../utils");
 
 /**
@@ -16,15 +18,21 @@ function init({ redis, log }) {
       return cachedVal;
     }
 
+    const options = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ username, password }),
+    };
+
+    if (process.env.HTTPS_PROXY) {
+      options.agent = new HttpsProxyAgent(process.env.HTTPS_PROXY);
+    }
+
     const res = await fetcher(
       `${process.env.FBS_CMS_API_URL}/external/v1/${agencyid}/authentication/login`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ username, password }),
-      },
+      options,
       log
     );
 
