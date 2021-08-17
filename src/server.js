@@ -22,7 +22,7 @@ const schema = {
  */
 module.exports = async function (fastify, opts) {
   // route to check if server is running
-  fastify.get("/", async (request) => {
+  fastify.get("/", { logLevel: "error" }, async (request) => {
     return "ok";
   });
 
