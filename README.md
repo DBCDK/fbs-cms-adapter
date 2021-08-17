@@ -10,16 +10,16 @@ Here are a couple of examples on how to call the adapter:
 
 | Description | Request | Response Body | Response Status Code |
 |-------------|---------|---------------| -------------------- |
-| The adapter inserts a proper agencyid when call is proxied to the FBS CMS API. |`curl -H "Authorization: Bearer ANONYMOUS_TOKEN" "{ADAPTER_HOST}:3000/external/agencyid/catalog/holdings/v3?recordid=51701763"`|  `[{"recordId":"51701763", "reservable":false, "reservations":0, "holdings": []}]`| 200 |
-| The adapter inserts a proper agencyid and patronid when call is proxied to the FBS CMS API.  |`curl -H "Authorization: Bearer AUTHENTICATED_TOKEN" "{ADAPTER_HOST}:3000/external/v1/agencyid/patrons/patronid/reservations/v2"`|  `[...]`| 200 |
+| The adapter inserts a proper agencyid when call is proxied to the FBS CMS API. |`curl -H "Authorization: Bearer ANONYMOUS_TOKEN" "{ADAPTER_HOST}/external/agencyid/catalog/holdings/v3?recordid=51701763"`|  `[{"recordId":"51701763", "reservable":false, "reservations":0, "holdings": []}]`| 200 |
+| The adapter inserts a proper agencyid and patronid when call is proxied to the FBS CMS API.  |`curl -H "Authorization: Bearer AUTHENTICATED_TOKEN" "{ADAPTER_HOST}/external/v1/agencyid/patrons/patronid/reservations/v2"`|  `[...]`| 200 |
 
 For the most of the time the adapter will pass raw responses from the FBS CMS API back to the caller. In some circumstances however, the adapter itself return error messages:
 | Description | Request | Response Body | Response Status Code |
 |-------------|---------|---------------|----------------------|
-| Missing authorization header |`curl "{ADAPTER_HOST}:3000/external/agencyid/catalog/holdings/v3?recordid=51701763"`|  `{"message":"headers should have required property 'authorization'"}`| 400 |
-| Token does not exist |  `curl -H "Authorization: Bearer TOKEN_NON_EXISTING" "{ADAPTER_HOST}:3000/external/agencyid/catalog/holdings/v3?recordid=51701763"`  | `{"message":"invalid token"}`  | 403 |
-| Token is associated with client not configured with credentials for accessing FBS CMS API |  `curl -H "Authorization: Bearer TOKEN_MISSING_CREDENTIALS" "{ADAPTER_HOST}:3000/external/agencyid/catalog/holdings/v3?recordid=51701763"`  | `{"message":"token must have FBS credentials with 'agencyid', 'username' and 'password'"}`  | 403 |
-| Anonymous token is used where authenticated token is required | `curl -H "Authorization: Bearer ANONYMOUS_TOKEN" "{ADAPTER_HOST}:3000/exter-vl/v1/agencyid/patrons/patronid/reservations/v2"` | `{"message":"user authenticated token is required"}` | 403 |
+| Missing authorization header |`curl "{ADAPTER_HOST}/external/agencyid/catalog/holdings/v3?recordid=51701763"`|  `{"message":"headers should have required property 'authorization'"}`| 400 |
+| Token does not exist |  `curl -H "Authorization: Bearer TOKEN_NON_EXISTING" "{ADAPTER_HOST}/external/agencyid/catalog/holdings/v3?recordid=51701763"`  | `{"message":"invalid token"}`  | 403 |
+| Token is associated with client not configured with credentials for accessing FBS CMS API |  `curl -H "Authorization: Bearer TOKEN_MISSING_CREDENTIALS" "{ADAPTER_HOST}/external/agencyid/catalog/holdings/v3?recordid=51701763"`  | `{"message":"token must have FBS credentials with 'agencyid', 'username' and 'password'"}`  | 403 |
+| Anonymous token is used where authenticated token is required | `curl -H "Authorization: Bearer ANONYMOUS_TOKEN" "{ADAPTER_HOST}/exter-vl/v1/agencyid/patrons/patronid/reservations/v2"` | `{"message":"user authenticated token is required"}` | 403 |
 
 ## Setting up the dev environment
 Use docker-compose to start the dev server on port 3000.
