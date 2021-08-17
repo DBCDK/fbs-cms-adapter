@@ -62,7 +62,6 @@ module.exports = async function (fastify, opts) {
     mocked = [];
     // redis namespaces to wipe
     const namespaces = request.body.namespaces;
-    console.log("namespaces", namespaces);
     await Promise.all(
       namespaces.map(async (namespace) => {
         const { redis } = createRedis({

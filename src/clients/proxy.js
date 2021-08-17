@@ -1,3 +1,5 @@
+const HttpProxyAgent = require("http-proxy-agent");
+
 const { fetcher } = require("../utils");
 
 function replacePath({ url, agencyid, patronId }) {
@@ -24,6 +26,10 @@ function init(request) {
         "X-Session": sessionKey,
       },
     };
+
+    if (process.env.HTTPS_PROXY) {
+      options.agent = new HttpProxyAgent(process.env.HTTPS_PROXY);
+    }
 
     delete options.headers.host;
     delete options.headers.authorization;
