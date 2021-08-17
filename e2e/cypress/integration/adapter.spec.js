@@ -31,7 +31,7 @@ describe("Testing the FBS CMS adapter", () => {
       }).then((res) => {
         expect(res.status).to.eq(400);
         expect(res.body).to.deep.include({
-          message: "querystring should have required property 'token'",
+          message: "headers should have required property 'authorization'",
         });
       });
     });
@@ -47,7 +47,10 @@ describe("Testing the FBS CMS adapter", () => {
 
       // Send request to adapter
       cy.request({
-        url: "/external/agencyid/some/path?token=TOKEN",
+        url: "/external/agencyid/some/path",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
         failOnStatusCode: false,
       }).then((res) => {
         expect(res.status).to.eq(403);
@@ -102,7 +105,10 @@ describe("Testing the FBS CMS adapter", () => {
         "TOKEN_WITHOUT_FBS_PASSWORD",
       ].forEach((token) => {
         cy.request({
-          url: `/external/agencyid/some/path?token=${token}`,
+          url: `/external/agencyid/some/path`,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
           failOnStatusCode: false,
         }).then((res) => {
           expect(res.status).to.eq(403);
@@ -139,7 +145,10 @@ describe("Testing the FBS CMS adapter", () => {
 
       // Send request to adapter
       cy.request({
-        url: "/external/agencyid/some/path?token=TOKEN",
+        url: "/external/agencyid/some/path",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
         failOnStatusCode: false,
       }).then((res) => {
         expect(res.status).to.eq(200);
@@ -149,7 +158,7 @@ describe("Testing the FBS CMS adapter", () => {
       });
 
       // Redis should have updated value
-      redisGet({ key: "sessionkey:TOKEN" }).then((value) => {
+      redisGet({ key: "TOKEN", namespace: "sessionkey" }).then((value) => {
         expect(value).to.equal("SOME_VALID_SESSION_KEY");
       });
     });
@@ -178,7 +187,10 @@ describe("Testing the FBS CMS adapter", () => {
       // Send request to adapter
       cy.request({
         method: "POST",
-        url: "/external/agencyid/some/path?token=TOKEN",
+        url: "/external/agencyid/some/path",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
         body: { test: "test" },
         failOnStatusCode: false,
       }).then((res) => {
@@ -189,7 +201,7 @@ describe("Testing the FBS CMS adapter", () => {
       });
 
       // Redis should have updated value
-      redisGet({ key: "sessionkey:TOKEN" }).then((value) => {
+      redisGet({ key: "TOKEN", namespace: "sessionkey" }).then((value) => {
         expect(value).to.equal("SOME_VALID_SESSION_KEY");
       });
     });
@@ -212,12 +224,19 @@ describe("Testing the FBS CMS adapter", () => {
           fbs: validSmaugFbsCredentials,
         },
       });
-      redisSet({ key: "sessionkey:TOKEN", value: "SOME_VALID_SESSION_KEY" });
+      redisSet({
+        key: "TOKEN",
+        value: "SOME_VALID_SESSION_KEY",
+        namespace: "sessionkey",
+      });
       mockFetchFbsCmsAnonymousPathSucces();
 
       // Send request to adapter
       cy.request({
-        url: "/external/agencyid/some/path?token=TOKEN",
+        url: "/external/agencyid/some/path",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
         failOnStatusCode: false,
       }).then((res) => {
         expect(res.status).to.eq(200);
@@ -247,14 +266,21 @@ describe("Testing the FBS CMS adapter", () => {
           fbs: validSmaugFbsCredentials,
         },
       });
-      redisSet({ key: "sessionkey:TOKEN", value: "SOME_EXPIRED_SESSION_KEY" });
+      redisSet({
+        key: "TOKEN",
+        value: "SOME_EXPIRED_SESSION_KEY",
+        namespace: "sessionkey",
+      });
       mockFetchFbsCmsAnonymousPathExpiredSessionKey();
       mockFetchFbsSessionKeySucces();
       mockFetchFbsCmsAnonymousPathSucces();
 
       // Send request to adapter
       cy.request({
-        url: "/external/agencyid/some/path?token=TOKEN",
+        url: "/external/agencyid/some/path",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
         failOnStatusCode: false,
       }).then((res) => {
         expect(res.status).to.eq(200);
@@ -264,7 +290,7 @@ describe("Testing the FBS CMS adapter", () => {
       });
 
       // Redis should have updated value
-      redisGet({ key: "sessionkey:TOKEN" }).then((value) => {
+      redisGet({ key: "TOKEN", namespace: "sessionkey" }).then((value) => {
         expect(value).to.equal("SOME_VALID_SESSION_KEY");
       });
     });
@@ -289,7 +315,10 @@ describe("Testing the FBS CMS adapter", () => {
 
       // Send request to adapter
       cy.request({
-        url: "/external/agencyid/patron/patronid/some/path?token=TOKEN",
+        url: "/external/agencyid/patron/patronid/some/path",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
         failOnStatusCode: false,
       }).then((res) => {
         expect(res.status).to.eq(403);
@@ -325,7 +354,10 @@ describe("Testing the FBS CMS adapter", () => {
 
       // Send request to adapter
       cy.request({
-        url: "/external/agencyid/patrons/patronid/some/path?token=TOKEN",
+        url: "/external/agencyid/patrons/patronid/some/path",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
         failOnStatusCode: false,
       }).then((res) => {
         expect(res.status).to.eq(200);
@@ -335,10 +367,10 @@ describe("Testing the FBS CMS adapter", () => {
       });
 
       // Redis should have updated values
-      redisGet({ key: "sessionkey:TOKEN" }).then((value) => {
+      redisGet({ key: "TOKEN", namespace: "sessionkey" }).then((value) => {
         expect(value).to.equal("SOME_VALID_SESSION_KEY");
       });
-      redisGet({ key: "patronid:TOKEN" }).then((value) => {
+      redisGet({ key: "TOKEN", namespace: "patronid" }).then((value) => {
         expect(value).to.equal("1234");
       });
     });
@@ -362,13 +394,20 @@ describe("Testing the FBS CMS adapter", () => {
           fbs: validSmaugFbsCredentials,
         },
       });
-      redisSet({ key: "sessionkey:TOKEN", value: "SOME_VALID_SESSION_KEY" });
-      redisSet({ key: "patronid:TOKEN", value: "1234" });
+      redisSet({
+        key: "TOKEN",
+        value: "SOME_VALID_SESSION_KEY",
+        namespace: "sessionkey",
+      });
+      redisSet({ key: "TOKEN", value: "1234", namespace: "patronid" });
       mockFetchFbsCmsAuthenticatedPathSucces();
 
       // Send request to adapter
       cy.request({
-        url: "/external/agencyid/patrons/patronid/some/path?token=TOKEN",
+        url: "/external/agencyid/patrons/patronid/some/path",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
         failOnStatusCode: false,
       }).then((res) => {
         expect(res.status).to.eq(200);
@@ -400,7 +439,11 @@ describe("Testing the FBS CMS adapter", () => {
           fbs: validSmaugFbsCredentials,
         },
       });
-      redisSet({ key: "sessionkey:TOKEN", value: "SOME_EXPIRED_SESSION_KEY" });
+      redisSet({
+        key: "TOKEN",
+        value: "SOME_EXPIRED_SESSION_KEY",
+        namespace: "sessionkey",
+      });
       mockFetchFbsPatronIdExpiredSessionKey();
       mockFetchFbsSessionKeySucces();
       mockFetchFbsPatronIdSucces();
@@ -408,7 +451,10 @@ describe("Testing the FBS CMS adapter", () => {
 
       // Send request to adapter
       cy.request({
-        url: "/external/agencyid/patrons/patronid/some/path?token=TOKEN",
+        url: "/external/agencyid/patrons/patronid/some/path",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
         failOnStatusCode: false,
       }).then((res) => {
         expect(res.status).to.eq(200);
@@ -418,10 +464,10 @@ describe("Testing the FBS CMS adapter", () => {
       });
 
       // Redis should have updated values
-      redisGet({ key: "sessionkey:TOKEN" }).then((value) => {
+      redisGet({ key: "TOKEN", namespace: "sessionkey" }).then((value) => {
         expect(value).to.equal("SOME_VALID_SESSION_KEY");
       });
-      redisGet({ key: "patronid:TOKEN" }).then((value) => {
+      redisGet({ key: "TOKEN", namespace: "patronid" }).then((value) => {
         expect(value).to.equal("1234");
       });
     });
@@ -449,8 +495,12 @@ describe("Testing the FBS CMS adapter", () => {
           fbs: validSmaugFbsCredentials,
         },
       });
-      redisSet({ key: "sessionkey:TOKEN", value: "SOME_EXPIRED_SESSION_KEY" });
-      redisSet({ key: "patronid:TOKEN", value: "12345" });
+      redisSet({
+        key: "TOKEN",
+        value: "SOME_EXPIRED_SESSION_KEY",
+        namespace: "sessionkey",
+      });
+      redisSet({ key: "TOKEN", value: "12345", namespace: "patronid" });
       mockFetchFbsCmsAuthenticatedPathExpiredSessionKey();
       mockFetchFbsSessionKeySucces();
       mockFetchFbsPatronIdSucces();
@@ -458,7 +508,10 @@ describe("Testing the FBS CMS adapter", () => {
 
       // Send request to adapter
       cy.request({
-        url: "/external/agencyid/patrons/patronid/some/path?token=TOKEN",
+        url: "/external/agencyid/patrons/patronid/some/path",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
         failOnStatusCode: false,
       }).then((res) => {
         expect(res.status).to.eq(200);
@@ -468,10 +521,10 @@ describe("Testing the FBS CMS adapter", () => {
       });
 
       // Redis should have updated values
-      redisGet({ key: "sessionkey:TOKEN" }).then((value) => {
+      redisGet({ key: "TOKEN", namespace: "sessionkey" }).then((value) => {
         expect(value).to.equal("SOME_VALID_SESSION_KEY");
       });
-      redisGet({ key: "patronid:TOKEN" }).then((value) => {
+      redisGet({ key: "TOKEN", namespace: "patronid" }).then((value) => {
         expect(value).to.equal("1234");
       });
     });
@@ -494,6 +547,7 @@ function resetMockHTTP() {
   cy.request({
     method: "POST",
     url: `${mockHTTPUrl}/reset`,
+    body: { namespaces: ["patronid", "sessionid"] },
   });
 }
 
@@ -534,14 +588,11 @@ function mockFetchFbsPatronIdSucces() {
   mockHTTP({
     request: {
       method: "POST",
-      path: "/fbscms/external/some-agencyid/patrons/authenticate/v3",
+      path: "/fbscms/external/some-agencyid/patrons/preauthenticated/v7",
       headers: {
         "x-session": "SOME_VALID_SESSION_KEY",
       },
-      body: {
-        libraryCardNumber: validSmaugUser.id,
-        pincode: validSmaugUser.pin,
-      },
+      body: validSmaugUser.id,
     },
     response: {
       status: 200,
@@ -559,14 +610,11 @@ function mockFetchFbsPatronIdExpiredSessionKey() {
   mockHTTP({
     request: {
       method: "POST",
-      path: "/fbscms/external/some-agencyid/patrons/authenticate/v3",
+      path: "/fbscms/external/some-agencyid/patrons/preauthenticated/v7",
       headers: {
         "x-session": "SOME_EXPIRED_SESSION_KEY",
       },
-      body: {
-        libraryCardNumber: validSmaugUser.id,
-        pincode: validSmaugUser.pin,
-      },
+      body: validSmaugUser.id,
     },
     response: {
       status: 401,
@@ -657,22 +705,23 @@ function mockFetchFbsCmsAuthenticatedPathExpiredSessionKey() {
   });
 }
 
-function redisSet({ key, value }) {
+function redisSet({ key, value, namespace }) {
   cy.request({
     method: "POST",
     url: `${mockHTTPUrl}/redis`,
     body: {
       key,
       value,
+      namespace,
     },
   });
 }
 
-function redisGet({ key }) {
+function redisGet({ key, namespace }) {
   return cy
     .request({
       method: "GET",
-      url: `${mockHTTPUrl}/redis?key=${key}`,
+      url: `${mockHTTPUrl}/redis?key=${key}&namespace=${namespace}`,
     })
     .then((res) => res.body);
 }

@@ -7,23 +7,46 @@
 "use strict";
 
 const isMatch = require("lodash/isMatch");
+const createRedis = require("./clients/redis");
 
 let mocked = [];
 
 module.exports = async function (fastify, opts) {
-  fastify.register(require("fastify-redis"), { url: process.env.REDIS_URL });
+  // FBS API require to receive content type application/json
+  // even though the body is a string.
+  // We have to override the default fastify body parser
+  fastify.addContentTypeParser(
+    "application/json",
+    { parseAs: "string" },
+    function (req, body, done) {
+      try {
+        var json = JSON.parse(body);
+        done(null, json);
+      } catch (err) {
+        done(null, body);
+      }
+    }
+  );
 
   // Redis get operation
   fastify.get("/redis", async (request) => {
-    const { redis } = fastify;
+    const { redis } = createRedis({
+      log: fastify.log,
+      namespace: request.query.namespace,
+    });
     const val = await redis.get(request.query.key);
+    await redis.disconnect();
     return val;
   });
 
   // Redis set operation
   fastify.post("/redis", async (request) => {
-    const { redis } = fastify;
+    const { redis } = createRedis({
+      log: fastify.log,
+      namespace: request.body.namespace,
+    });
     await redis.set(request.body.key, request.body.value);
+    await redis.disconnect();
     return "OK";
   });
 
@@ -37,8 +60,18 @@ module.exports = async function (fastify, opts) {
   // Reset Redis and Mocked requests
   fastify.post("/reset", async (request) => {
     mocked = [];
-    const { redis } = fastify;
-    await redis.flushall();
+    // redis namespaces to wipe
+    const namespaces = request.body.namespaces;
+    console.log("namespaces", namespaces);
+    await Promise.all(
+      namespaces.map(async (namespace) => {
+        const { redis } = createRedis({
+          log: fastify.log,
+          namespace,
+        });
+        await redis.flushall();
+      })
+    );
     return "ok";
   });
 
@@ -59,6 +92,11 @@ module.exports = async function (fastify, opts) {
       if (match) {
         return reply.code(match.response.status).send(match.response.body);
       }
+
+      request.log.error({
+        msg: "no mock matching request",
+        request: { body, headers, method, query, path },
+      });
 
       reply.code(500).send({ message: "no mock matching request" });
     },

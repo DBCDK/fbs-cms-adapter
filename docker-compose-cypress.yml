@@ -4,17 +4,21 @@ services:
     image: "${IMAGE}"
     environment:
       - FASTIFY_LOG_LEVEL=info
-      - FASTIFY_PRETTY_LOGS=true
+      - FASTIFY_PRETTY_LOGS=false
+      - REDIS_HOST=redis
     command: bash -c "npx fastify start src/httpmock.js --watch"
+    depends_on:
+      - redis
   redis:
     image: "redis:alpine"
   adapter:
     image: "${IMAGE}"
     environment:
       - FASTIFY_LOG_LEVEL=debug
-      - FASTIFY_PRETTY_LOGS=true
+      - FASTIFY_PRETTY_LOGS=false
       - SMAUG_URL=http://http_mock:3000/smaug/configuration
       - FBS_CMS_API_URL=http://http_mock:3000/fbscms
+      - REDIS_HOST=redis
     depends_on:
       - http_mock
       - redis
@@ -25,6 +29,7 @@ services:
       - './e2e:/app/e2e'
     depends_on:
       - adapter
+      - http_mock
     environment:
       - CYPRESS_baseUrl=http://adapter:3000
       - CYPRESS_mockHTTPUrl=http://http_mock:3000
