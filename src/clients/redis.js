@@ -10,7 +10,7 @@ const options = {
  */
 function createRedis({ log: appLogger, namespace }) {
   const redis = process.env.REDIS_CLUSTER_HOST
-    ? new Redis.Cluster([{ ...options, keyPrefix: namespace }])
+    ? new Redis.Cluster([options], { ...options, keyPrefix: namespace })
     : new Redis({ ...options, keyPrefix: namespace });
 
   redis.on("error", (e) => {
