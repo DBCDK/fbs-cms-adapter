@@ -1,4 +1,5 @@
 const Redis = require("ioredis");
+const { nanoToMs } = require("../utils");
 
 const options = {
   host: process.env.REDIS_CLUSTER_HOST || process.env.REDIS_HOST,
@@ -14,7 +15,11 @@ function createRedis({ log: appLogger, namespace }) {
     : new Redis({ ...options, keyPrefix: namespace });
 
   redis.on("error", (e) => {
-    appLogger.error({ msg: "Redis error", stack: e.stack, namespace });
+    appLogger.error("Redis error", {
+      error: String(e),
+      stacktrace: e.stack,
+      namespace,
+    });
   });
 
   /**
@@ -27,15 +32,23 @@ function createRedis({ log: appLogger, namespace }) {
      * Adds some error handling as well as logging
      */
     async function get(key) {
+      const start = process.hrtime();
       try {
         const res = await redis.get(key);
-        log.info(`Redis: GET ${namespace}:${key}->${res}`);
+        log.info(`Redis: GET ${namespace}:${key}->${res}`, {
+          timings: { ms: nanoToMs(process.hrtime(start)[1]) },
+        });
         return res;
       } catch (error) {
         log.error(
-          `Redis: GET ${namespace}:${key} FAILED ${process.env.REDIS_HOST}`
+          `Redis: GET ${namespace}:${key} FAILED ${process.env.REDIS_HOST}`,
+          {
+            error: String(e),
+            stacktrace: e.stack,
+            namespace,
+            timings: { ms: nanoToMs(process.hrtime(start)[1]) },
+          }
         );
-        log.error(error);
         throw { code: 500, body: "internal server error" };
       }
     }
@@ -45,14 +58,22 @@ function createRedis({ log: appLogger, namespace }) {
      * Adds some error handling as well as logging
      */
     async function set(key, value) {
+      const start = process.hrtime();
       try {
         await redis.set(key, value);
-        log.info(`Redis: SET ${namespace}:${key}->${value}`);
+        log.info(`Redis: SET ${namespace}:${key}->${value}`, {
+          timings: { ms: nanoToMs(process.hrtime(start)[1]) },
+        });
       } catch (error) {
         log.error(
-          `Redis: SET ${namespace}:${key} FAILED ${process.env.REDIS_HOST}`
+          `Redis: SET ${namespace}:${key} FAILED ${process.env.REDIS_HOST}`,
+          {
+            error: String(e),
+            stacktrace: e.stack,
+            namespace,
+            timings: { ms: nanoToMs(process.hrtime(start)[1]) },
+          }
         );
-        log.error(error);
         throw { code: 500, body: "internal server error" };
       }
     }

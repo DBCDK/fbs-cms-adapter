@@ -1,10 +1,15 @@
 "use strict";
 
+const { log } = require("dbc-node-logger");
+const { v4: uuidv4 } = require("uuid");
+
 const createRedis = require("./clients/redis");
 const initSmaug = require("./clients/smaug");
 const initProxy = require("./clients/proxy");
 const initPreauthenticated = require("./clients/preauthenticated");
 const initFbsLogin = require("./clients/fbslogin");
+const initLogger = require("./logger");
+const { nanoToMs } = require("./utils");
 
 // JSON Schema for validating the request headers
 const schema = {
@@ -21,12 +26,13 @@ const schema = {
  * All requests to the adapter is handled in this route handler
  */
 module.exports = async function (fastify, opts) {
-  // route to check if server is running
-  fastify.get("/", { logLevel: "error" }, async (request) => {
-    return "ok";
-  });
+  // Initialize and create global logger for app
+  const appLogger = initLogger({ app: "fbs-cms-adapter" });
+  appLogger.info("App started");
 
-  const appLogger = fastify.log;
+  // Prepare for 'decorateRequest' and 'timings' properties to be set on request object
+  fastify.decorateRequest("requestLogger", null);
+  fastify.decorateRequest("timings", null);
 
   // Establish connections to redis for namespaces
   const redisClientPatronId = createRedis({
@@ -38,22 +44,64 @@ module.exports = async function (fastify, opts) {
     namespace: "sessionkey",
   });
 
+  fastify.addHook("onRequest", (request, reply, done) => {
+    // Create request logger and generate uuid (reqId) to be attached
+    // to every log line during this request
+    request.requestLogger = appLogger.child({ reqId: uuidv4() });
+
+    request.requestLogger.info("onRequest", {
+      request: {
+        method: request.method,
+        url: request.url,
+        headers: request.headers,
+        hostname: request.hostname,
+        remoteAddress: request.ip,
+        remotePort: request.connection.remotePort,
+      },
+    });
+
+    request.timings = { start: process.hrtime() };
+
+    done();
+  });
+
+  fastify.addHook("onResponse", (request, reply, done) => {
+    request.requestLogger.info("onResponse", {
+      response: { status: reply.statusCode },
+      timings: { ms: nanoToMs(process.hrtime(request.timings.start)[1]) },
+    });
+    done();
+  });
+
+  // route to check if server is running
+  fastify.get("/", { logLevel: "silent" }, async (request) => {
+    return "ok";
+  });
+
   fastify.route({
     method: ["GET", "POST", "PUT", "DELETE"],
     url: "*",
     schema,
+    logLevel: "silent",
     handler: async (request, reply) => {
       try {
+        const requestLogger = request.requestLogger;
+
         // Initialize clients with logger for this request
-        const requestLogger = request.log;
         const redisPatronId = redisClientPatronId.init({
           log: requestLogger,
         });
         const redisSessionKey = redisClientSessionKey.init({
           log: requestLogger,
         });
-        const smaug = initSmaug(request);
-        const proxy = initProxy(request);
+        const smaug = initSmaug({ log: requestLogger });
+        const proxy = initProxy({
+          url: request.url,
+          method: request.method,
+          headers: request.headers,
+          body: request.body,
+          log: requestLogger,
+        });
         const preauthenticated = initPreauthenticated({
           log: requestLogger,
           redis: redisPatronId,
@@ -134,7 +182,11 @@ module.exports = async function (fastify, opts) {
       } catch (error) {
         if (!error.code) {
           // This is an unexpected error, could be a bug
-          request.log.error(error);
+          // request.log.error(error);
+          log.error(String(error), {
+            error: String(error),
+            stacktrace: error.stack,
+          });
         }
 
         reply

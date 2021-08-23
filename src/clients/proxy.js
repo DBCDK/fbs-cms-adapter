@@ -11,18 +11,15 @@ function replacePath({ url, agencyid, patronId }) {
 /**
  * Initializes the proxy
  */
-function init(request) {
+function init({ url, method, headers, body, log }) {
   /**
    * The actual fetch function
    */
   async function fetch({ sessionKey, agencyid, patronId }) {
-    // use this when token is a header
-    const url = request.url;
-
     const options = {
-      method: request.method,
+      method: method,
       headers: {
-        ...request.headers,
+        ...headers,
         "X-Session": sessionKey,
       },
     };
@@ -34,17 +31,14 @@ function init(request) {
     delete options.headers.host;
     delete options.headers.authorization;
 
-    if (request.body) {
-      options.body =
-        typeof request.body === "object"
-          ? JSON.stringify(request.body)
-          : request.body;
+    if (body) {
+      options.body = typeof body === "object" ? JSON.stringify(body) : body;
     }
 
     let res = await fetcher(
       process.env.FBS_CMS_API_URL + replacePath({ url, agencyid, patronId }),
       options,
-      request.log
+      log
     );
 
     switch (res.code) {

@@ -5,14 +5,20 @@ const fetch = require("node-fetch");
  * Adds some error handling as well as logging
  */
 async function fetcher(url, options, log) {
+  const start = process.hrtime();
   let res;
   try {
     res = await fetch(url, options);
   } catch (e) {
     log.error(
-      `Outgoing request: ${
+      `External HTTP request: ${
         (options && options.method) || "GET"
-      } ${url} FETCH ERROR`
+      } ${url} FETCH ERROR`,
+      {
+        error: String(e),
+        stacktrace: e.stack,
+        timings: { ms: nanoToMs(process.hrtime(start)[1]) },
+      }
     );
 
     throw {
@@ -27,9 +33,10 @@ async function fetcher(url, options, log) {
       : await res.text();
 
   log.info(
-    `Outgoing request: ${(options && options.method) || "GET"} ${url} ${
+    `External HTTP request: ${(options && options.method) || "GET"} ${url} ${
       res.status
-    }`
+    }`,
+    { timings: { ms: nanoToMs(process.hrtime(start)[1]) } }
   );
 
   return {
@@ -38,6 +45,17 @@ async function fetcher(url, options, log) {
   };
 }
 
+/**
+ * Convert ns to ms
+ *
+ * @param {number} nano
+ * @returns {number}
+ */
+function nanoToMs(nano) {
+  return Math.round(nano / 1000000);
+}
+
 module.exports = {
   fetcher,
+  nanoToMs,
 };
