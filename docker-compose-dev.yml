@@ -18,7 +18,7 @@ services:
   adapter:
     build: .
     environment:
-      - FASTIFY_LOG_LEVEL=debug
+      - FASTIFY_LOG_LEVEL=silent
       - FASTIFY_PRETTY_LOGS=false
       - SMAUG_URL=http://http_mock:3000/smaug/configuration
       - FBS_CMS_API_URL=http://http_mock:3000/fbscms

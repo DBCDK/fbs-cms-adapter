@@ -52,10 +52,9 @@ function init({ redis, log }) {
         // session key expired
         throw res;
       default:
-        log.error(
-          { response: res },
-          `Failed to fetch patronId. This is unexpected`
-        );
+        log.error(`Failed to fetch patronId. This is unexpected`, {
+          response: { status: res.code, body: res.body },
+        });
 
         // Pass error on to the caller
         throw res;

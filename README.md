@@ -29,10 +29,8 @@ This will start a service for mocking HTTP, a Redis and the adapter. The adapter
 When the dev environment is started, run tests with `npm run cy:open`.
 
 ## Environment Variables
-- **FASTIFY_LOG_LEVEL**
-Sets the log level. Supported values are *trace, debug, info, warn, error, fatal, silent*
-- **FASTIFY_PRETTY_LOGS**
-If set to true, a log line is pretty printed, but it is not json (Used for development)
+- **LOG_LEVEL**
+Sets the log level. Supported values are *TRACE, DEBUG, INFO, WARN, ERROR or OFF*
 - **SMAUG_URL**
 Url pointing at smaug configuration endpoint
 - **FBS_CMS_API_URL**
