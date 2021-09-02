@@ -19,18 +19,22 @@ For these two types of tokens can be used:
 
 - Anonymous tokens for requests that do not include a Patron ID: `Authorization: Bearer {ANONYMOUS_TOKEN}`
 - Authenticated tokens for requests that includes a Patron ID: `Authorization: Bearer {AUTHENTICATED_TOKEN}`
-  The tokens are aquired through login.bib.dk
+
+The tokens are aquired through login.bib.dk
 
 ## Request parameters
 
 The above requirements gives the following request syntax:
 
 A request to FBS CMS API, consists of a Header with a X-session token, a host and a path:
+
 `curl -H "X-session: {SESSION_TOKEN}" "{FBS_HOST}/{PATH}"`
+
 When using the adapter, the header should be replaced with a DÅP token and FBS_HOST should be replaced with the adapter host:
+
 `curl -H "Authorization: Bearer {TOKEN}" "{ADAPTER_HOST}/{PATH}"`
 
-If the path contains an agencyid parameter and/or a patronid parameter theese should be filled out with the strings `agencyid` and `patronid`
+If the path contains an agencyid parameter and/or a patronid parameter theese should be filled out with the strings `agencyid` and `patronid`:
 
 `/external/v1/{agencyid}/patrons/{patronid}/reservations/v2` becomes `/external/v1/agencyid/patrons/patronid/reservations/v2`
 
