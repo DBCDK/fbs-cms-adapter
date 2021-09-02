@@ -15,7 +15,7 @@ Available endpoints in the FBS CMS API may be divided into two categories:
 1. Accessing anonymous data where `agencyid` is specified in the path
 2. Accessing user specific data where both `agencyid` and `patronid` are specified in the path.
 
-For theese two types of tokens can be used:
+For these two types of tokens can be used:
 
 - Anonymous tokens for requests that do not include a Patron ID: `Authorization: Bearer {ANONYMOUS_TOKEN}`
 - Authenticated tokens for requests that includes a Patron ID: `Authorization: Bearer {AUTHENTICATED_TOKEN}`
