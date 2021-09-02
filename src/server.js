@@ -50,7 +50,7 @@ module.exports = async function (fastify, opts) {
     request.requestLogger = appLogger.child({ reqId: uuidv4() });
 
     request.requestLogger.info("onRequest", {
-      request: {
+      requestObj: {
         method: request.method,
         url: request.url,
         headers: request.headers,

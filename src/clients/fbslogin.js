@@ -43,10 +43,9 @@ function init({ redis, log }) {
       return sessionKey;
     }
 
-    log.error(
-      { response: res },
-      "Failed to fetch session key. This is unexpected"
-    );
+    log.error("Failed to fetch session key. This is unexpected", {
+      response: { status: res.code, body: res.body },
+    });
 
     // Pass error on to the caller
     throw res;
