@@ -111,6 +111,14 @@ module.exports = async function (fastify, opts) {
           redis: redisSessionKey,
         });
 
+        // url contains a /authenticate or /preauthenticated path (which should be hidden)
+        const includesAuthenticate = !!request.url.includes("authenticate");
+
+        // throw a 404 (not found) if path includes authenticate
+        if (includesAuthenticate) {
+          reply.code(404).send();
+        }
+
         // The smaug token extracted from authorization header
         const token = request.headers.authorization.replace(/bearer /i, "");
 

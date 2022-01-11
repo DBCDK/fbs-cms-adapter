@@ -119,6 +119,60 @@ describe("Testing the FBS CMS adapter", () => {
         });
       });
     });
+
+    it("returns not found when url contains authenticate", () => {
+      /**
+       * Expected flow:
+       * 1. Returns 404 for a request url containing authenticate
+       */
+
+      // Setup mocks
+      mockSmaug({
+        token: "TOKEN",
+        status: 200,
+        body: {
+          fbs: validSmaugFbsCredentials,
+        },
+      });
+
+      // Send request to adapter
+      cy.request({
+        url: "/external/agencyid/patrons/authenticate/some/path",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
+        failOnStatusCode: false,
+      }).then((res) => {
+        expect(res.status).to.eq(404);
+      });
+    });
+
+    it("returns not found when url contains preauthenticated", () => {
+      /**
+       * Expected flow:
+       * 1. Returns 404 for a request url containing pre(authenticate)d
+       */
+
+      // Setup mocks
+      mockSmaug({
+        token: "TOKEN",
+        status: 200,
+        body: {
+          fbs: validSmaugFbsCredentials,
+        },
+      });
+
+      // Send request to adapter
+      cy.request({
+        url: "/external/agencyid/patrons/preauthenticated/some/path",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
+        failOnStatusCode: false,
+      }).then((res) => {
+        expect(res.status).to.eq(404);
+      });
+    });
   });
 
   context("Access anonymous path", () => {
