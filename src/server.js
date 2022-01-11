@@ -116,7 +116,7 @@ module.exports = async function (fastify, opts) {
 
         // throw a 404 (not found) if path includes authenticate
         if (includesAuthenticate) {
-          reply.code(404).send();
+          reply.code(404).send({ message: "not found" });
         }
 
         // The smaug token extracted from authorization header

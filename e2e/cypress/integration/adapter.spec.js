@@ -126,15 +126,6 @@ describe("Testing the FBS CMS adapter", () => {
        * 1. Returns 404 for a request url containing authenticate
        */
 
-      // Setup mocks
-      mockSmaug({
-        token: "TOKEN",
-        status: 200,
-        body: {
-          fbs: validSmaugFbsCredentials,
-        },
-      });
-
       // Send request to adapter
       cy.request({
         url: "/external/agencyid/patrons/authenticate/some/path",
@@ -144,6 +135,9 @@ describe("Testing the FBS CMS adapter", () => {
         failOnStatusCode: false,
       }).then((res) => {
         expect(res.status).to.eq(404);
+        expect(res.body).to.deep.include({
+          message: "not found",
+        });
       });
     });
 
@@ -152,15 +146,6 @@ describe("Testing the FBS CMS adapter", () => {
        * Expected flow:
        * 1. Returns 404 for a request url containing pre(authenticate)d
        */
-
-      // Setup mocks
-      mockSmaug({
-        token: "TOKEN",
-        status: 200,
-        body: {
-          fbs: validSmaugFbsCredentials,
-        },
-      });
 
       // Send request to adapter
       cy.request({
@@ -171,6 +156,9 @@ describe("Testing the FBS CMS adapter", () => {
         failOnStatusCode: false,
       }).then((res) => {
         expect(res.status).to.eq(404);
+        expect(res.body).to.deep.include({
+          message: "not found",
+        });
       });
     });
   });
