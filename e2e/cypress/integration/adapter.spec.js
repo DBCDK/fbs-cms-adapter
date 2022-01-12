@@ -571,6 +571,40 @@ describe("Testing the FBS CMS adapter", () => {
       });
     });
   });
+
+  it.only("Can fetch CPR data from userinfo with a authorized token", () => {
+    /**
+     * Expected flow:
+     * 1. Adapter uses token to fetch smaug configuration containing fbs credentials
+     * 2. Configuration validation fails, due to missing user when accessing authenticated path
+     */
+
+    // Setup mocks
+    // mockSmaug({
+    //   token: "TOKEN",
+    //   status: 200,
+    //   body: {
+    //     user: validSmaugUser,
+    //     fbs: validSmaugFbsCredentials,
+    //   },
+    // });
+
+    mockFetchUserinfoAuthenticatedTokenSucces();
+
+    // Send request to adapter
+    cy.request({
+      url: "/external/agencyid/patrons/v5",
+      headers: {
+        Authorization: "Bearer TOKEN",
+      },
+      failOnStatusCode: false,
+    }).then((res) => {
+      expect(res.status).to.eq(403);
+      expect(res.body).to.deep.include({
+        message: "user authenticated token is required",
+      });
+    });
+  });
 });
 
 // ----- HELPER FUNCTIONS FOR MOCKING STUFF -----
@@ -743,6 +777,28 @@ function mockFetchFbsCmsAuthenticatedPathExpiredSessionKey() {
     response: {
       status: 401,
       body: { message: "key is expired" },
+    },
+  });
+}
+
+function mockFetchUserinfoAuthenticatedTokenSucces() {
+  mockHTTP({
+    request: {
+      method: "GET",
+      path: `/userinfo`,
+      headers: {
+        authorization: "Bearer TOKEN",
+      },
+    },
+    response: {
+      status: 200,
+      body: {
+        attributes: {
+          cpr: "0102033690",
+          userId: "0102033690",
+          pincode: "0000",
+        },
+      },
     },
   });
 }

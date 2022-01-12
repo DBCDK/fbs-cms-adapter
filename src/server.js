@@ -6,6 +6,7 @@ const { v4: uuidv4 } = require("uuid");
 const createRedis = require("./clients/redis");
 const initSmaug = require("./clients/smaug");
 const initProxy = require("./clients/proxy");
+const initUserinfo = require("./clients/userinfo");
 const initPreauthenticated = require("./clients/preauthenticated");
 const initFbsLogin = require("./clients/fbslogin");
 const initLogger = require("./logger");
@@ -94,7 +95,11 @@ module.exports = async function (fastify, opts) {
         const redisSessionKey = redisClientSessionKey.init({
           log: requestLogger,
         });
+
         const smaug = initSmaug({ log: requestLogger });
+
+        const userinfo = initUserinfo({ log: requestLogger });
+
         const proxy = initProxy({
           url: request.url,
           method: request.method,
@@ -121,6 +126,11 @@ module.exports = async function (fastify, opts) {
 
         // The smaug token extracted from authorization header
         const token = request.headers.authorization.replace(/bearer /i, "");
+
+        // Get CPR
+        const cpr = await userinfo.fetch({ token });
+
+        console.log("####### cpr", cpr);
 
         // Check if we need to fetch patronId
         const patronIdRequired = request.url.includes("/patronid/");

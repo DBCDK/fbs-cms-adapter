@@ -84,9 +84,9 @@ module.exports = async function (fastify, opts) {
 
       // Look for any mocked requests that matches current request
       // method, path, headers, body, query should match
-      const match = mocked.find((mock) =>
-        isMatch({ method, path, headers, body, query }, mock.request)
-      );
+      const match = mocked.find((mock) => {
+        return isMatch({ method, path, headers, body, query }, mock.request);
+      });
 
       if (match) {
         return reply.code(match.response.status).send(match.response.body);
