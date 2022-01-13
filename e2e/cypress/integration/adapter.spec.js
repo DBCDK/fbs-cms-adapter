@@ -570,38 +570,74 @@ describe("Testing the FBS CMS adapter", () => {
         expect(value).to.equal("1234");
       });
     });
-  });
 
-  it.only("Can fetch CPR data from userinfo with a authorized token", () => {
-    /**
-     * Expected flow:
-     * 1. Adapter uses token to fetch smaug configuration containing fbs credentials
-     * 2. Configuration validation fails, due to missing user when accessing authenticated path
-     */
+    it.only("Can fetch CPR data from userinfo with a authorized token", () => {
+      /**
+       * Expected flow:
+       * 1. Adapter uses token to fetch smaug configuration containing fbs credentials
+       * 2. /userinfo attributes will contain a cpr number (nem-id login)
+       */
 
-    // Setup mocks
-    // mockSmaug({
-    //   token: "TOKEN",
-    //   status: 200,
-    //   body: {
-    //     user: validSmaugUser,
-    //     fbs: validSmaugFbsCredentials,
-    //   },
-    // });
+      // Setup mocks
+      mockSmaug({
+        token: "TOKEN",
+        status: 200,
+        body: {
+          user: validSmaugUser,
+          fbs: validSmaugFbsCredentials,
+        },
+      });
 
-    mockFetchUserinfoAuthenticatedTokenSucces();
+      mockFetchUserinfoAuthenticatedTokenSucces();
+      mockFetchFbsSessionKeySucces();
+      mockFetchFbsPatronIdSucces();
+      mockFetchFbsCmsAuthenticatedPathSucces();
 
-    // Send request to adapter
-    cy.request({
-      url: "/external/agencyid/patrons/v5",
-      headers: {
-        Authorization: "Bearer TOKEN",
-      },
-      failOnStatusCode: false,
-    }).then((res) => {
-      expect(res.status).to.eq(403);
-      expect(res.body).to.deep.include({
-        message: "user authenticated token is required",
+      // Send request to adapter
+      cy.request({
+        method: "POST",
+        url: "/external/agencyid/patrons/v5",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
+        failOnStatusCode: false,
+      }).then((res) => {
+        expect(res.status).to.eq(200);
+      });
+    });
+
+    it("Fail when token has no CPR attached (no nem-id signin)", () => {
+      /**
+       * Expected flow:
+       * 1. Adapter uses token to fetch smaug configuration containing fbs credentials
+       * 2. /userinfo attributes will NOT contain a cpr number (no nem-id login)
+       */
+
+      // Setup mocks
+      mockSmaug({
+        token: "TOKEN",
+        status: 200,
+        body: {
+          user: validSmaugUser,
+          fbs: validSmaugFbsCredentials,
+        },
+      });
+
+      mockFetchUserinfoAuthenticatedTokenNoCPR();
+
+      // Send request to adapter
+      cy.request({
+        method: "POST",
+        url: "/external/agencyid/patrons/v5",
+        headers: {
+          Authorization: "Bearer TOKEN_WITH_NO_CPR",
+        },
+        failOnStatusCode: false,
+      }).then((res) => {
+        expect(res.status).to.eq(403);
+        expect(res.body).to.deep.include({
+          message: "token does not include a cpr",
+        });
       });
     });
   });
@@ -795,6 +831,27 @@ function mockFetchUserinfoAuthenticatedTokenSucces() {
       body: {
         attributes: {
           cpr: "0102033690",
+          userId: "0102033690",
+          pincode: "0000",
+        },
+      },
+    },
+  });
+}
+
+function mockFetchUserinfoAuthenticatedTokenNoCPR() {
+  mockHTTP({
+    request: {
+      method: "GET",
+      path: `/userinfo`,
+      headers: {
+        authorization: "Bearer TOKEN_WITH_NO_CPR",
+      },
+    },
+    response: {
+      status: 200,
+      body: {
+        attributes: {
           userId: "0102033690",
           pincode: "0000",
         },

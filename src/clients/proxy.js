@@ -15,7 +15,7 @@ function init({ url, method, headers, body, log }) {
   /**
    * The actual fetch function
    */
-  async function fetch({ sessionKey, agencyid, patronId }) {
+  async function fetch({ sessionKey, agencyid, patronId, cpr }) {
     const options = {
       method: method,
       headers: {
@@ -30,6 +30,19 @@ function init({ url, method, headers, body, log }) {
 
     delete options.headers.host;
     delete options.headers.authorization;
+
+    if (cpr) {
+      // If method POST to withGuardian url, cpr is attached to body.guardian
+      const isGuardian =
+        method === "POST" &&
+        url === "/external/agencyid/patrons/withGuardian/v1";
+      // attatch cprNumber to body
+      if (isGuardian) {
+        options.body.guardian.cprNumber = cpr;
+      } else {
+        options.body.cprNumber = cpr;
+      }
+    }
 
     if (body) {
       options.body = typeof body === "object" ? JSON.stringify(body) : body;

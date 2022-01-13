@@ -23,6 +23,16 @@ const schema = {
   },
 };
 
+// whitelist request specifications
+const whitelist = {
+  // userinfo cpr request
+  userinfo: [
+    { method: "POST", url: "/external/agencyid/patrons/v5" },
+    { method: "POST", url: "/external/agencyid/patrons/withGuardian/v1" },
+    { method: "PUT", url: "/external/agencyid/patrons/patronid/v3" },
+  ],
+};
+
 /**
  * All requests to the adapter is handled in this route handler
  */
@@ -127,10 +137,16 @@ module.exports = async function (fastify, opts) {
         // The smaug token extracted from authorization header
         const token = request.headers.authorization.replace(/bearer /i, "");
 
-        // Get CPR
-        const cpr = await userinfo.fetch({ token });
-
-        console.log("####### cpr", cpr);
+        // check method and url matches whotelist item -> this will allow userinfo to be called to get cpr
+        const cprRequired = !!whitelist.userinfo.find(
+          (obj) => obj.method === request.method && obj.url === request.url
+        );
+        // if allowed, retrieve cpr from token
+        let cpr = null;
+        if (cprRequired) {
+          cpr = await userinfo.fetch({ token });
+          console.log("####### cpr", cpr);
+        }
 
         // Check if we need to fetch patronId
         const patronIdRequired = request.url.includes("/patronid/");
@@ -166,6 +182,7 @@ module.exports = async function (fastify, opts) {
             sessionKey,
             patronId,
             agencyid: configuration.fbs.agencyid,
+            cpr,
           });
         } catch (e) {
           if (e.code === 401) {
@@ -188,6 +205,7 @@ module.exports = async function (fastify, opts) {
               sessionKey,
               patronId,
               agencyid: configuration.fbs.agencyid,
+              cpr,
             });
           } else {
             // Give up, and pass the error to the caller
