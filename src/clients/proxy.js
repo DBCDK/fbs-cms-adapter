@@ -42,8 +42,6 @@ function init({ url, method, headers, body, log }) {
       },
     };
 
-    console.log("########## body 1", body);
-
     if (process.env.HTTPS_PROXY) {
       options.agent = new HttpsProxyAgent(process.env.HTTPS_PROXY);
     }
@@ -59,13 +57,9 @@ function init({ url, method, headers, body, log }) {
       body = merge({}, copy, attachedCpr);
     }
 
-    console.log("########## body 2", body);
-
     if (body) {
       options.body = typeof body === "object" ? JSON.stringify(body) : body;
     }
-
-    console.log("########## body 3", options.body);
 
     let res = await fetcher(
       process.env.FBS_CMS_API_URL + replacePath({ url, agencyid, patronId }),
