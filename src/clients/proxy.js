@@ -52,7 +52,7 @@ function init({ url, method, headers, body, log }) {
       const copy = typeof body === "object" ? body : JSON.parse(body || {});
       // attatch cprNumber to body according to url and method
       const attachedCpr = attachCpr({ url, method, cpr });
-      // inject cpr to body
+      // attach cpr to body
       body = { ...copy, ...attachedCpr };
     }
 

@@ -904,9 +904,9 @@ function mockFetchUserinfoAuthenticatedTokenSucces() {
       status: 200,
       body: {
         attributes: {
-          cpr: "0102033690",
-          userId: "0102033690",
-          pincode: "0000",
+          cpr: "some-cpr",
+          userId: "some-userId",
+          pincode: "some-pincode",
         },
       },
     },
@@ -926,8 +926,8 @@ function mockFetchUserinfoAuthenticatedTokenNoCPR() {
       status: 200,
       body: {
         attributes: {
-          userId: "0102033690",
-          pincode: "0000",
+          userId: "some-userId",
+          pincode: "some-pincode",
         },
       },
     },
@@ -939,7 +939,7 @@ function mockCreatePatronInjectedCprSucces() {
     request: {
       method: "POST",
       path: `/fbscms/external/some-agencyid/patrons/v5`,
-      body: '{"cprNumber":"0102033690"}',
+      body: '{"cprNumber":"some-cpr"}',
     },
     response: {
       status: 200,
@@ -952,7 +952,7 @@ function mockCreatePatronWithGuardianInjectedCprSucces() {
     request: {
       method: "POST",
       path: `/fbscms/external/some-agencyid/patrons/withGuardian/v1`,
-      body: '{"guardian":{"cprNumber":"0102033690"}}',
+      body: '{"guardian":{"cprNumber":"some-cpr"}}',
     },
     response: {
       status: 200,
@@ -968,7 +968,7 @@ function mockUpdatePatronPincodeInjectedCprSucces() {
       headers: {
         "x-session": "SOME_VALID_SESSION_KEY",
       },
-      body: '{"pincodeChange":{"libraryCardNumber":"0102033690"}}',
+      body: '{"pincodeChange":{"libraryCardNumber":"some-cpr"}}',
     },
     response: {
       status: 200,
