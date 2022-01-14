@@ -145,7 +145,6 @@ module.exports = async function (fastify, opts) {
         let cpr = null;
         if (cprRequired) {
           cpr = await userinfo.fetch({ token });
-          console.log("####### cpr", cpr);
         }
 
         // Check if we need to fetch patronId

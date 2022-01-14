@@ -32,16 +32,17 @@ function init({ url, method, headers, body, log }) {
     delete options.headers.authorization;
 
     if (cpr) {
-      // If method POST to withGuardian url, cpr is attached to body.guardian
+      const copy = typeof body === "object" ? body : JSON.parse(body || {});
+      // on POST to withGuardian url, cpr is attached to a deeper level body.guardian
       const isGuardian =
         method === "POST" &&
         url === "/external/agencyid/patrons/withGuardian/v1";
-      // attatch cprNumber to body
-      if (isGuardian) {
-        options.body.guardian.cprNumber = cpr;
-      } else {
-        options.body.cprNumber = cpr;
-      }
+      // attatch cprNumber to body according to isGuardian
+      const cprNumber = isGuardian
+        ? { guardian: { cprNumber: cpr } }
+        : { cprNumber: cpr };
+      // inject cpr to body
+      body = { ...copy, ...cprNumber };
     }
 
     if (body) {

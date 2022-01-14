@@ -571,7 +571,7 @@ describe("Testing the FBS CMS adapter", () => {
       });
     });
 
-    it.only("Can fetch CPR data from userinfo with a authorized token", () => {
+    it("Can fetch CPR data from authorized token (/userinfo) when creating patron", () => {
       /**
        * Expected flow:
        * 1. Adapter uses token to fetch smaug configuration containing fbs credentials
@@ -590,13 +590,46 @@ describe("Testing the FBS CMS adapter", () => {
 
       mockFetchUserinfoAuthenticatedTokenSucces();
       mockFetchFbsSessionKeySucces();
-      mockFetchFbsPatronIdSucces();
-      mockFetchFbsCmsAuthenticatedPathSucces();
+      mockCreatePatronInjectedCprSucces();
 
       // Send request to adapter
       cy.request({
         method: "POST",
         url: "/external/agencyid/patrons/v5",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
+        failOnStatusCode: false,
+      }).then((res) => {
+        expect(res.status).to.eq(200);
+      });
+    });
+
+    it("Can fetch CPR data from authorized token (/userinfo) when creating patron withGuardian", () => {
+      /**
+       * Expected flow:
+       * 1. Adapter uses token to fetch smaug configuration containing fbs credentials
+       * 2. /userinfo attributes will contain a cpr number (nem-id login)
+       */
+
+      // Setup mocks
+      mockSmaug({
+        token: "TOKEN",
+        status: 200,
+        body: {
+          user: validSmaugUser,
+          fbs: validSmaugFbsCredentials,
+        },
+      });
+
+      mockFetchUserinfoAuthenticatedTokenSucces();
+      mockFetchFbsSessionKeySucces();
+      mockCreatePatronWithGuardianInjectedCprSucces();
+
+      // Send request to adapter
+      cy.request({
+        method: "POST",
+        url: "/external/agencyid/patrons/withGuardian/v1",
         headers: {
           Authorization: "Bearer TOKEN",
         },
@@ -856,6 +889,32 @@ function mockFetchUserinfoAuthenticatedTokenNoCPR() {
           pincode: "0000",
         },
       },
+    },
+  });
+}
+
+function mockCreatePatronInjectedCprSucces() {
+  mockHTTP({
+    request: {
+      method: "POST",
+      path: `/fbscms/external/some-agencyid/patrons/v5`,
+      body: '{"cprNumber":"0102033690"}',
+    },
+    response: {
+      status: 200,
+    },
+  });
+}
+
+function mockCreatePatronWithGuardianInjectedCprSucces() {
+  mockHTTP({
+    request: {
+      method: "POST",
+      path: `/fbscms/external/some-agencyid/patrons/withGuardian/v1`,
+      body: '{"guardian":{"cprNumber":"0102033690"}}',
+    },
+    response: {
+      status: 200,
     },
   });
 }
