@@ -84,17 +84,9 @@ module.exports = async function (fastify, opts) {
 
       // Look for any mocked requests that matches current request
       // method, path, headers, body, query should match
-      const match = mocked.find((mock) => {
-        if (path === "/fbscms/external/some-agencyid/patrons/v5") {
-          console.log(
-            "##############",
-            { method, path, headers, body, query },
-            mock.request
-          );
-        }
-
-        return isMatch({ method, path, headers, body, query }, mock.request);
-      });
+      const match = mocked.find((mock) =>
+        isMatch({ method, path, headers, body, query }, mock.request)
+      );
 
       if (match) {
         return reply.code(match.response.status).send(match.response.body);
