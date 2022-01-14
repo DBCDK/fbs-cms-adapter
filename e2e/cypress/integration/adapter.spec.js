@@ -604,6 +604,9 @@ describe("Testing the FBS CMS adapter", () => {
         failOnStatusCode: false,
       }).then((res) => {
         expect(res.status).to.eq(200);
+        expect(res.body).to.deep.include({
+          message: "hello new patron",
+        });
       });
     });
 
@@ -637,9 +640,16 @@ describe("Testing the FBS CMS adapter", () => {
         headers: {
           Authorization: "Bearer TOKEN",
         },
+        body: {
+          "some-prop": "some-value",
+          guardian: { name: "some-name", email: "some-email" },
+        },
         failOnStatusCode: false,
       }).then((res) => {
         expect(res.status).to.eq(200);
+        expect(res.body).to.deep.include({
+          message: "hello new guardian created patron",
+        });
       });
     });
 
@@ -674,9 +684,16 @@ describe("Testing the FBS CMS adapter", () => {
         headers: {
           Authorization: "Bearer TOKEN",
         },
+        body: {
+          "some-prop": "some-value",
+          "some-other-prop": { "some-deeper-prop": "some-deeper-value" },
+        },
         failOnStatusCode: false,
       }).then((res) => {
         expect(res.status).to.eq(200);
+        expect(res.body).to.deep.include({
+          message: "fresh new updated pincode for patron",
+        });
       });
     });
 
@@ -943,6 +960,7 @@ function mockCreatePatronInjectedCprSucces() {
     },
     response: {
       status: 200,
+      body: { message: "hello new patron" },
     },
   });
 }
@@ -952,10 +970,18 @@ function mockCreatePatronWithGuardianInjectedCprSucces() {
     request: {
       method: "POST",
       path: `/fbscms/external/some-agencyid/patrons/withGuardian/v1`,
-      body: '{"guardian":{"cprNumber":"some-cpr"}}',
+      body: {
+        "some-prop": "some-value",
+        guardian: {
+          name: "some-name",
+          email: "some-email",
+          cprNumber: "some-cpr",
+        },
+      },
     },
     response: {
       status: 200,
+      body: { message: "hello new guardian created patron" },
     },
   });
 }
@@ -968,10 +994,17 @@ function mockUpdatePatronPincodeInjectedCprSucces() {
       headers: {
         "x-session": "SOME_VALID_SESSION_KEY",
       },
-      body: '{"pincodeChange":{"libraryCardNumber":"some-cpr"}}',
+      body: {
+        "some-prop": "some-value",
+        "some-other-prop": { "some-deeper-prop": "some-deeper-value" },
+        pincodeChange: { libraryCardNumber: "some-cpr" },
+      },
     },
     response: {
       status: 200,
+      body: {
+        message: "fresh new updated pincode for patron",
+      },
     },
   });
 }

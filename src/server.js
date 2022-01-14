@@ -137,7 +137,7 @@ module.exports = async function (fastify, opts) {
         // The smaug token extracted from authorization header
         const token = request.headers.authorization.replace(/bearer /i, "");
 
-        // check method and url matches whotelist item -> this will allow userinfo to be called to get cpr
+        // check method and url matches whitelist item -> this will allow userinfo to be called to get cpr
         const cprRequired = !!whitelist.userinfo.find(
           (obj) => obj.method === request.method && obj.url === request.url
         );
