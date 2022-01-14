@@ -576,6 +576,8 @@ describe("Testing the FBS CMS adapter", () => {
        * Expected flow:
        * 1. Adapter uses token to fetch smaug configuration containing fbs credentials
        * 2. /userinfo attributes will contain a cpr number (nem-id login)
+       * 3. cpr will get attached to body
+       * 4. Patron will be created
        */
 
       // Setup mocks
@@ -610,6 +612,8 @@ describe("Testing the FBS CMS adapter", () => {
        * Expected flow:
        * 1. Adapter uses token to fetch smaug configuration containing fbs credentials
        * 2. /userinfo attributes will contain a cpr number (nem-id login)
+       * 3. cpr will get attached to body
+       * 4. Guardian can create Patron
        */
 
       // Setup mocks
@@ -630,6 +634,43 @@ describe("Testing the FBS CMS adapter", () => {
       cy.request({
         method: "POST",
         url: "/external/agencyid/patrons/withGuardian/v1",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
+        failOnStatusCode: false,
+      }).then((res) => {
+        expect(res.status).to.eq(200);
+      });
+    });
+
+    it("Can fetch CPR data from authorized token (/userinfo) when updating pincode for patron", () => {
+      /**
+       * Expected flow:
+       * 1. Adapter uses token to fetch smaug configuration containing fbs credentials
+       * 2. /userinfo attributes will contain a cpr number (nem-id login)
+       * 3. cpr will get attached to body
+       * 4. Patron can update pincode
+       */
+
+      // Setup mocks
+      mockSmaug({
+        token: "TOKEN",
+        status: 200,
+        body: {
+          user: validSmaugUser,
+          fbs: validSmaugFbsCredentials,
+        },
+      });
+
+      mockFetchFbsSessionKeySucces();
+      mockFetchFbsPatronIdSucces();
+      mockFetchUserinfoAuthenticatedTokenSucces();
+      mockUpdatePatronPincodeInjectedCprSucces();
+
+      // Send request to adapter
+      cy.request({
+        method: "PUT",
+        url: "/external/agencyid/patrons/patronid/v3",
         headers: {
           Authorization: "Bearer TOKEN",
         },
@@ -912,6 +953,22 @@ function mockCreatePatronWithGuardianInjectedCprSucces() {
       method: "POST",
       path: `/fbscms/external/some-agencyid/patrons/withGuardian/v1`,
       body: '{"guardian":{"cprNumber":"0102033690"}}',
+    },
+    response: {
+      status: 200,
+    },
+  });
+}
+
+function mockUpdatePatronPincodeInjectedCprSucces() {
+  mockHTTP({
+    request: {
+      method: "PUT",
+      path: `/fbscms/external/some-agencyid/patrons/1234/v3`,
+      headers: {
+        "x-session": "SOME_VALID_SESSION_KEY",
+      },
+      body: '{"pincodeChange":{"libraryCardNumber":"0102033690"}}',
     },
     response: {
       status: 200,
