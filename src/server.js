@@ -6,6 +6,7 @@ const { v4: uuidv4 } = require("uuid");
 const createRedis = require("./clients/redis");
 const initSmaug = require("./clients/smaug");
 const initProxy = require("./clients/proxy");
+const initUserinfo = require("./clients/userinfo");
 const initPreauthenticated = require("./clients/preauthenticated");
 const initFbsLogin = require("./clients/fbslogin");
 const initLogger = require("./logger");
@@ -20,6 +21,16 @@ const schema = {
     },
     required: ["Authorization"],
   },
+};
+
+// whitelist request specifications
+const whitelist = {
+  // userinfo cpr request
+  userinfo: [
+    { method: "POST", url: "/external/agencyid/patrons/v5" },
+    { method: "POST", url: "/external/agencyid/patrons/withGuardian/v1" },
+    { method: "PUT", url: "/external/agencyid/patrons/patronid/v3" },
+  ],
 };
 
 /**
@@ -94,7 +105,11 @@ module.exports = async function (fastify, opts) {
         const redisSessionKey = redisClientSessionKey.init({
           log: requestLogger,
         });
+
         const smaug = initSmaug({ log: requestLogger });
+
+        const userinfo = initUserinfo({ log: requestLogger });
+
         const proxy = initProxy({
           url: request.url,
           method: request.method,
@@ -121,6 +136,16 @@ module.exports = async function (fastify, opts) {
 
         // The smaug token extracted from authorization header
         const token = request.headers.authorization.replace(/bearer /i, "");
+
+        // check method and url matches whitelist item -> this will allow userinfo to be called to get cpr
+        const cprRequired = !!whitelist.userinfo.find(
+          (obj) => obj.method === request.method && obj.url === request.url
+        );
+        // if allowed, retrieve cpr from token
+        let cpr = null;
+        if (cprRequired) {
+          cpr = await userinfo.fetch({ token });
+        }
 
         // Check if we need to fetch patronId
         const patronIdRequired = request.url.includes("/patronid/");
@@ -156,6 +181,7 @@ module.exports = async function (fastify, opts) {
             sessionKey,
             patronId,
             agencyid: configuration.fbs.agencyid,
+            cpr,
           });
         } catch (e) {
           if (e.code === 401) {
@@ -178,6 +204,7 @@ module.exports = async function (fastify, opts) {
               sessionKey,
               patronId,
               agencyid: configuration.fbs.agencyid,
+              cpr,
             });
           } else {
             // Give up, and pass the error to the caller

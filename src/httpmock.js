@@ -76,7 +76,7 @@ module.exports = async function (fastify, opts) {
 
   // Returns a mocked if it matches any
   fastify.route({
-    method: ["GET", "POST"],
+    method: ["GET", "POST", "PUT"],
     url: "*",
     handler: async (request, reply) => {
       const { body, headers, method, query } = request;
