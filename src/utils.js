@@ -8,6 +8,17 @@ async function fetcher(url, options, log) {
   const start = process.hrtime();
   let res;
   try {
+    log.error(
+      `External HTTP request: ${
+        (options && options.method) || "GET"
+      } ${url} FETCH ERROR`,
+      {
+        error: String(e),
+        stacktrace: e.stack,
+        timings: { ms: nanoToMs(process.hrtime(start)[1]) },
+      }
+    );
+
     res = await fetch(url, options);
   } catch (e) {
     log.error(
