@@ -53,13 +53,13 @@ Some requests to FBS CMS API, will require a CPR number to be attached to the bo
 
 The CPR data on the `/userinfo` endpoint will only be available for CPR validated users (nem-id validated e.g.).
 
-List of request requiring CPR to be attached to the body:
+List of requests requiring CPR to be attached to the body:
 
-| Description                                                        | Method | Request                                                                                                          | Request body                                                          |
-| ------------------------------------------------------------------ | ------ | ---------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| The adapter inserts CPR when creating patron request.              | POST   | `curl -H "Authorization: Bearer AUTHENTICATED_TOKEN" "{ADAPTER_HOST}/external/agencyid/patrons/v5"`              | `{props..., "cprNumber": "0102031234"}`                               |
-| The adapter inserts CPR when creating patron withguardian request. | POST   | `curl -H "Authorization: Bearer AUTHENTICATED_TOKEN" "{ADAPTER_HOST}/external/agencyid/patrons/withGuardian/v1"` | `{props..., "guardian": { "cprNumber": "0102031234" } }`              |
-| The adapter inserts CPR for patron pincode change request.         | PUT    | `curl -H "Authorization: Bearer AUTHENTICATED_TOKEN" "{ADAPTER_HOST}/external/agencyid/patrons/patronid/v3"`     | `{props..., "pincodeChange": { "libraryCardNumber": "0102031234" } }` |
+| Description                                                        | Method | Request                                                                                                                            | Request body                                                     |
+| ------------------------------------------------------------------ | ------ | ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| The adapter inserts CPR when creating patron request.              | POST   | `curl -H "Authorization: Bearer AUTHENTICATED_TOKEN" "{ADAPTER_HOST}/external/agencyid/patrons/v5" --data-raw '{...}`              | `{..., "cprNumber": "0102031234"}`                               |
+| The adapter inserts CPR when creating patron withguardian request. | POST   | `curl -H "Authorization: Bearer AUTHENTICATED_TOKEN" "{ADAPTER_HOST}/external/agencyid/patrons/withGuardian/v1" --data-raw '{...}` | `{..., "guardian": { "cprNumber": "0102031234" } }`              |
+| The adapter inserts CPR for patron pincode change request.         | PUT    | `curl -H "Authorization: Bearer AUTHENTICATED_TOKEN" "{ADAPTER_HOST}/external/agencyid/patrons/patronid/v3" --data-raw '{...}`     | `{..., "pincodeChange": { "libraryCardNumber": "0102031234" } }` |
 
 ## Custom responses from the Adapter
 
