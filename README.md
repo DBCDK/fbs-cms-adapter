@@ -47,6 +47,20 @@ Here are a couple of examples on how to call the adapter:
 | The adapter inserts a proper agencyid when call is proxied to the FBS CMS API.              | `curl -H "Authorization: Bearer ANONYMOUS_TOKEN" "{ADAPTER_HOST}/external/agencyid/catalog/holdings/v3?recordid=51701763"`   | `[{"recordId":"51701763", "reservable":false, "reservations":0, "holdings": []}]` | 200                  |
 | The adapter inserts a proper agencyid and patronid when call is proxied to the FBS CMS API. | `curl -H "Authorization: Bearer AUTHENTICATED_TOKEN" "{ADAPTER_HOST}/external/v1/agencyid/patrons/patronid/reservations/v2"` | `[...]`                                                                           | 200                  |
 
+## CPR required requests
+
+Some requests to FBS CMS API, will require a CPR number to be attached to the body. The adapter will automatically fetch the patrons CPR number, from the `/userinfo` endpoint at `login.bib.dk/userinfo` by using the authenticated token.
+
+The CPR data on the `/userinfo` endpoint will only be available for CPR validated users (nem-id validated e.g.).
+
+List of requests requiring CPR to be attached to the body:
+
+| Description                                                        | Method | Request                                                                                                                            | Request body                                                     |
+| ------------------------------------------------------------------ | ------ | ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| The adapter inserts CPR when creating patron request.              | POST   | `curl -H "Authorization: Bearer AUTHENTICATED_TOKEN" "{ADAPTER_HOST}/external/agencyid/patrons/v5" --data-raw '{...}`              | `{..., "cprNumber": "0102031234"}`                               |
+| The adapter inserts CPR when creating patron withguardian request. | POST   | `curl -H "Authorization: Bearer AUTHENTICATED_TOKEN" "{ADAPTER_HOST}/external/agencyid/patrons/withGuardian/v1" --data-raw '{...}` | `{..., "guardian": { "cprNumber": "0102031234" } }`              |
+| The adapter inserts CPR for patron pincode change request.         | PUT    | `curl -H "Authorization: Bearer AUTHENTICATED_TOKEN" "{ADAPTER_HOST}/external/agencyid/patrons/patronid/v3" --data-raw '{...}`     | `{..., "pincodeChange": { "libraryCardNumber": "0102031234" } }` |
+
 ## Custom responses from the Adapter
 
 For the most of the time the adapter will pass raw responses from the FBS CMS API back to the caller. In some circumstances however, the adapter itself return error messages:
@@ -55,7 +69,8 @@ For the most of the time the adapter will pass raw responses from the FBS CMS AP
 | Missing authorization header |`curl "{ADAPTER_HOST}/external/agencyid/catalog/holdings/v3?recordid=51701763"`| `{"message":"headers should have required property 'authorization'"}`| 400 |
 | Token does not exist | `curl -H "Authorization: Bearer TOKEN_NON_EXISTING" "{ADAPTER_HOST}/external/agencyid/catalog/holdings/v3?recordid=51701763"` | `{"message":"invalid token"}` | 403 |
 | Token is associated with client not configured with credentials for accessing FBS CMS API | `curl -H "Authorization: Bearer TOKEN_MISSING_CREDENTIALS" "{ADAPTER_HOST}/external/agencyid/catalog/holdings/v3?recordid=51701763"` | `{"message":"token must have FBS credentials with 'agencyid', 'username' and 'password'"}` | 403 |
-| Anonymous token is used where authenticated token is required | `curl -H "Authorization: Bearer ANONYMOUS_TOKEN" "{ADAPTER_HOST}/exter-vl/v1/agencyid/patrons/patronid/reservations/v2"` | `{"message":"user authenticated token is required"}` | 403 |
+| Anonymous token is used where authenticated token is required | `curl -H "Authorization: Bearer ANONYMOUS_TOKEN" "{ADAPTER_HOST}/external/v1/agencyid/patrons/patronid/reservations/v2"` | `{"message":"user authenticated token is required"}` | 403 |
+| Authenticate or preauthenticated path is called | `curl -H "Authorization: Bearer SOME_TOKEN" "{ADAPTER_HOST}/external/agencyid/patrons/authenticate/v6"` | `{"message":"not found"}` | 404 |
 
 ## Setting up the dev environment
 
