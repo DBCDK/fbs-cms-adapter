@@ -36,6 +36,8 @@ function init({ log }) {
         // ensure user has loggedIn by using nem-id
         validateUserinfoCPR({ attributes, log, token });
         return attributes.cpr;
+      case 401:
+        validateUserinfoCPR({ log }); // fails
       default:
         log.error(
           `Userinfo request failed for token=${token}. This is unexpected.`
