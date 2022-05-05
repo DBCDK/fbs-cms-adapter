@@ -25,7 +25,7 @@ services:
       - redis
   e2e:
     ipc: host ## Prevent Docker Crash in Cypress (https://github.com/cypress-io/cypress/issues/350)
-    image: docker.dbc.dk/cypress:latest
+    image: docker-frontend.artifacts.dbccloud.dk/cypress:latest
     volumes:
       - "./e2e:/app/e2e"
     depends_on:
