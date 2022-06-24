@@ -24,6 +24,7 @@ services:
       - FBS_CMS_API_URL=http://http_mock:3000/fbscms
       - REDIS_HOST=redis
       - USERINFO_URL=http://http_mock:3000/userinfo
+      - CORS_ORIGIN=*
     ports:
       - "3000:3000"
     volumes:
