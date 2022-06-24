@@ -31,7 +31,7 @@ describe("Testing the FBS CMS adapter", () => {
       }).then((res) => {
         expect(res.status).to.eq(400);
         expect(res.body).to.deep.include({
-          message: "headers should have required property 'authorization'",
+          message: "headers must have required property 'authorization'",
         });
       });
     });
