@@ -32,4 +32,4 @@ services:
     depends_on:
       - http_mock
       - redis
-    command: bash -c "npm install && npx fastify start src/server.js --watch"
+    command: bash -c "npx fastify start src/server.js --watch"
