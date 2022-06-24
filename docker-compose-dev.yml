@@ -24,6 +24,7 @@ services:
       - FBS_CMS_API_URL=http://http_mock:3000/fbscms
       - REDIS_HOST=redis
       - USERINFO_URL=http://http_mock:3000/userinfo
+      - CORS_ORIGIN=*
     ports:
       - "3000:3000"
     volumes:
@@ -31,4 +32,4 @@ services:
     depends_on:
       - http_mock
       - redis
-    command: bash -c "npx fastify start src/server.js --watch"
+    command: bash -c "npm install && npx fastify start src/server.js --watch"

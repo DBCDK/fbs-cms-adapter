@@ -33,6 +33,11 @@ const whitelist = {
   ],
 };
 
+const corsOptions = {
+  origin: `${process.env.CORS_ORIGIN}`,
+  methods: "GET,PUT,POST,DELETE,OPTIONS,HEAD",
+};
+
 /**
  * All requests to the adapter is handled in this route handler
  */
@@ -54,6 +59,8 @@ module.exports = async function (fastify, opts) {
     log: appLogger,
     namespace: "sessionkey",
   });
+
+  fastify.register(require("@fastify/cors"), corsOptions);
 
   fastify.addHook("onRequest", (request, reply, done) => {
     // Create request logger and generate uuid (reqId) to be attached
