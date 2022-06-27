@@ -9,14 +9,14 @@
   "main": "index.js",
   "scripts": {
     "start": "FASTIFY_LOG_LEVEL=silent fastify start index.js",
-    "cy:open": "npx cypress@latest open --project ./e2e"
+    "cy:open": "npx cypress@9 open --project ./e2e"
   },
   "author": "Frontend @ DBC",
   "license": "GPL-3.0-only",
   "dependencies": {
-    "@fastify/cors": "^8.0.0",
+    "@fastify/cors": "^7.0.0",
     "dbc-node-logger": "^2.0.9",
-    "fastify": "^4.1.0",
+    "fastify": "^3.18.0",
     "fastify-cli": "^2.13.0",
     "https-proxy-agent": "^5.0.0",
     "ioredis": "^4.27.6",
