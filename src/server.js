@@ -34,9 +34,18 @@ const whitelist = {
 };
 
 const corsOptions = {
-  origin: `${process.env.CORS_ORIGIN}`,
+  origin: parsCorsOrigin(),
   methods: "GET,PUT,POST,DELETE,OPTIONS,HEAD",
 };
+
+function parsCorsOrigin() {
+  const originValue = `${process.env.CORS_ORIGIN}`;
+  if (originValue === "all") {
+    return "*";
+  } else {
+    return originValue;
+  }
+}
 
 /**
  * All requests to the adapter is handled in this route handler
