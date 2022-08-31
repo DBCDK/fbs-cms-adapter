@@ -9,7 +9,7 @@
   "main": "index.js",
   "scripts": {
     "start": "FASTIFY_LOG_LEVEL=silent fastify start index.js",
-    "cy:open": "npx cypress@9 open --project ./e2e"
+    "cy:open": "npx cypress@10 open --project ./e2e"
   },
   "author": "Frontend @ DBC",
   "license": "GPL-3.0-only",
