@@ -636,7 +636,7 @@ describe("Testing the FBS CMS adapter", () => {
       // Send request to adapter
       cy.request({
         method: "POST",
-        url: "/external/agencyid/patrons/withGuardian/v1",
+        url: "/external/agencyid/patrons/withGuardian/v3",
         headers: {
           Authorization: "Bearer TOKEN",
         },
@@ -970,7 +970,7 @@ function mockCreatePatronWithGuardianInjectedCprSucces() {
   mockHTTP({
     request: {
       method: "POST",
-      path: `/fbscms/external/some-agencyid/patrons/withGuardian/v1`,
+      path: `/fbscms/external/some-agencyid/patrons/withGuardian/v3`,
       body: {
         "some-prop": "some-value",
         guardian: {

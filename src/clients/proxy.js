@@ -6,13 +6,17 @@ const { fetcher } = require("../utils");
 function attachCpr({ method, url, cpr }) {
   // on POST to withGuardian url, cpr is attached to a deeper level body.guardian
   const isGuardian =
-    method === "POST" && url === "/external/agencyid/patrons/withGuardian/v1";
+    method === "POST" &&
+    (url === "/external/agencyid/patrons/withGuardian/v1" ||
+      url === "/external/agencyid/patrons/withGuardian/v3");
   if (isGuardian) {
     return { guardian: { cprNumber: cpr } };
   }
   // on PUT (pincodeChange) to /patrons/patronid url, cpr is attached to a deeper level body.pincodeChange as libraryCardNumber
   const isPincodeChange =
-    method === "PUT" && url === "/external/agencyid/patrons/patronid/v8";
+    method === "PUT" &&
+    (url === "/external/agencyid/patrons/patronid/v8" ||
+      url === "/external/agencyid/patrons/patronid/v3");
   if (isPincodeChange) {
     return { pincodeChange: { libraryCardNumber: cpr } };
   }
