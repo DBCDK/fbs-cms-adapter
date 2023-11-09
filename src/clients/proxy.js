@@ -12,7 +12,7 @@ function attachCpr({ method, url, cpr }) {
   }
   // on PUT (pincodeChange) to /patrons/patronid url, cpr is attached to a deeper level body.pincodeChange as libraryCardNumber
   const isPincodeChange =
-    method === "PUT" && url === "/external/agencyid/patrons/patronid/v3";
+    method === "PUT" && url === "/external/agencyid/patrons/patronid/v8";
   if (isPincodeChange) {
     return { pincodeChange: { libraryCardNumber: cpr } };
   }

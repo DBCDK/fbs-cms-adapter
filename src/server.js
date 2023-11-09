@@ -27,9 +27,9 @@ const schema = {
 const whitelist = {
   // userinfo cpr request
   userinfo: [
-    { method: "POST", url: "/external/agencyid/patrons/v5" },
+    { method: "POST", url: "/external/agencyid/patrons/v9" },
     { method: "POST", url: "/external/agencyid/patrons/withGuardian/v1" },
-    { method: "PUT", url: "/external/agencyid/patrons/patronid/v3" },
+    { method: "PUT", url: "/external/agencyid/patrons/patronid/v8" },
   ],
 };
 
