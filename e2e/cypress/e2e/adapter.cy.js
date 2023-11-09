@@ -791,7 +791,7 @@ function mockFetchFbsPatronIdSucces() {
   mockHTTP({
     request: {
       method: "POST",
-      path: "/fbscms/external/some-agencyid/patrons/preauthenticated/v7",
+      path: "/fbscms/external/some-agencyid/patrons/preauthenticated/v9",
       headers: {
         "x-session": "SOME_VALID_SESSION_KEY",
       },
@@ -813,7 +813,7 @@ function mockFetchFbsPatronIdExpiredSessionKey() {
   mockHTTP({
     request: {
       method: "POST",
-      path: "/fbscms/external/some-agencyid/patrons/preauthenticated/v7",
+      path: "/fbscms/external/some-agencyid/patrons/preauthenticated/v9",
       headers: {
         "x-session": "SOME_EXPIRED_SESSION_KEY",
       },

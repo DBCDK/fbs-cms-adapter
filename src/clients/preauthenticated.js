@@ -24,7 +24,7 @@ function init({ redis, log }) {
       return redisVal;
     }
 
-    const path = `${process.env.FBS_CMS_API_URL}/external/${agencyid}/patrons/preauthenticated/v7`;
+    const path = `${process.env.FBS_CMS_API_URL}/external/${agencyid}/patrons/preauthenticated/v9`;
     const options = {
       method: "POST",
       headers: {
