@@ -597,7 +597,7 @@ describe("Testing the FBS CMS adapter", () => {
       // Send request to adapter
       cy.request({
         method: "POST",
-        url: "/external/agencyid/patrons/v5",
+        url: "/external/agencyid/patrons/v9",
         headers: {
           Authorization: "Bearer TOKEN",
         },
@@ -636,7 +636,7 @@ describe("Testing the FBS CMS adapter", () => {
       // Send request to adapter
       cy.request({
         method: "POST",
-        url: "/external/agencyid/patrons/withGuardian/v1",
+        url: "/external/agencyid/patrons/withGuardian/v3",
         headers: {
           Authorization: "Bearer TOKEN",
         },
@@ -680,7 +680,7 @@ describe("Testing the FBS CMS adapter", () => {
       // Send request to adapter
       cy.request({
         method: "PUT",
-        url: "/external/agencyid/patrons/patronid/v3",
+        url: "/external/agencyid/patrons/patronid/v8",
         headers: {
           Authorization: "Bearer TOKEN",
         },
@@ -719,7 +719,7 @@ describe("Testing the FBS CMS adapter", () => {
       // Send request to adapter
       cy.request({
         method: "POST",
-        url: "/external/agencyid/patrons/v5",
+        url: "/external/agencyid/patrons/v9",
         headers: {
           Authorization: "Bearer TOKEN_WITH_NO_CPR",
         },
@@ -791,7 +791,7 @@ function mockFetchFbsPatronIdSucces() {
   mockHTTP({
     request: {
       method: "POST",
-      path: "/fbscms/external/some-agencyid/patrons/preauthenticated/v7",
+      path: "/fbscms/external/some-agencyid/patrons/preauthenticated/v9",
       headers: {
         "x-session": "SOME_VALID_SESSION_KEY",
       },
@@ -813,7 +813,7 @@ function mockFetchFbsPatronIdExpiredSessionKey() {
   mockHTTP({
     request: {
       method: "POST",
-      path: "/fbscms/external/some-agencyid/patrons/preauthenticated/v7",
+      path: "/fbscms/external/some-agencyid/patrons/preauthenticated/v9",
       headers: {
         "x-session": "SOME_EXPIRED_SESSION_KEY",
       },
@@ -956,7 +956,7 @@ function mockCreatePatronInjectedCprSucces() {
   mockHTTP({
     request: {
       method: "POST",
-      path: `/fbscms/external/some-agencyid/patrons/v5`,
+      path: `/fbscms/external/some-agencyid/patrons/v9`,
       body: '{"cprNumber":"some-cpr"}',
     },
     response: {
@@ -970,7 +970,7 @@ function mockCreatePatronWithGuardianInjectedCprSucces() {
   mockHTTP({
     request: {
       method: "POST",
-      path: `/fbscms/external/some-agencyid/patrons/withGuardian/v1`,
+      path: `/fbscms/external/some-agencyid/patrons/withGuardian/v3`,
       body: {
         "some-prop": "some-value",
         guardian: {
@@ -991,7 +991,7 @@ function mockUpdatePatronPincodeInjectedCprSucces() {
   mockHTTP({
     request: {
       method: "PUT",
-      path: `/fbscms/external/some-agencyid/patrons/1234/v3`,
+      path: `/fbscms/external/some-agencyid/patrons/1234/v8`,
       headers: {
         "x-session": "SOME_VALID_SESSION_KEY",
       },
