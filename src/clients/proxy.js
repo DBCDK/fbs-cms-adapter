@@ -10,7 +10,7 @@ function attachCpr({ method, url, cpr }) {
     (url === "/external/agencyid/patrons/withGuardian/v1" ||
       url === "/external/agencyid/patrons/withGuardian/v3");
   if (isGuardian) {
-    return { guardian: { cprNumber: cpr } };
+    return { guardian: { personIdentifier: cpr } };
   }
   // on PUT (pincodeChange) to /patrons/patronid url, cpr is attached to a deeper level body.pincodeChange as libraryCardNumber
   const isPincodeChange =
@@ -21,7 +21,7 @@ function attachCpr({ method, url, cpr }) {
     return { pincodeChange: { libraryCardNumber: cpr } };
   }
   // else return default at base level
-  return { cprNumber: cpr };
+  return { personIdentifier: cpr };
 }
 
 function replacePath({ url, agencyid, patronId }) {

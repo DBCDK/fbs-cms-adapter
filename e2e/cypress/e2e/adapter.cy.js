@@ -957,7 +957,7 @@ function mockCreatePatronInjectedCprSucces() {
     request: {
       method: "POST",
       path: `/fbscms/external/some-agencyid/patrons/v9`,
-      body: '{"cprNumber":"some-cpr"}',
+      body: '{"personIdentifier":"some-cpr"}',
     },
     response: {
       status: 200,
@@ -976,7 +976,7 @@ function mockCreatePatronWithGuardianInjectedCprSucces() {
         guardian: {
           name: "some-name",
           email: "some-email",
-          cprNumber: "some-cpr",
+          personIdentifier: "some-cpr",
         },
       },
     },
