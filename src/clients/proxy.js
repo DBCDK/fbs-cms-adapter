@@ -9,17 +9,31 @@ function attachCpr({ method, url, cpr }) {
     method === "POST" &&
     (url === "/external/agencyid/patrons/withGuardian/v1" ||
       url === "/external/agencyid/patrons/withGuardian/v3");
+
   if (isGuardian) {
+    // v1 is deprecated - this check can be removed when legacy version is no longer supported in fbs api
+    if (url === "/external/agencyid/patrons/withGuardian/v1") {
+      return { guardian: { cprNumber: cpr } };
+    }
+
     return { guardian: { personIdentifier: cpr } };
   }
+
   // on PUT (pincodeChange) to /patrons/patronid url, cpr is attached to a deeper level body.pincodeChange as libraryCardNumber
   const isPincodeChange =
     method === "PUT" &&
-    (url === "/external/agencyid/patrons/patronid/v8" ||
-      url === "/external/agencyid/patrons/patronid/v3");
+    (url === "/external/agencyid/patrons/patronid/v3" ||
+      url === "/external/agencyid/patrons/patronid/v8");
+
   if (isPincodeChange) {
     return { pincodeChange: { libraryCardNumber: cpr } };
   }
+
+  // v5 is deprecated - this check can be removed when legacy version is no longer supported in fbs api
+  if (url === "/external/agencyid/patrons/v5") {
+    return { cprNumber: cpr };
+  }
+
   // else return default at base level
   return { personIdentifier: cpr };
 }
