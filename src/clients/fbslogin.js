@@ -10,7 +10,9 @@ function init({ redis, log }) {
    * The actual fetch function
    */
   async function fetch({ token, configuration, skipCache = false }) {
-    const { agencyid, username, password } = configuration.fbs;
+    const { agencyid, username, password, url } = configuration.fbs;
+
+    const fbsCmsUrl = url || process.env.FBS_CMS_API_URL;
 
     const cachedVal = !skipCache && (await redis.get(token));
 
@@ -31,7 +33,7 @@ function init({ redis, log }) {
     }
 
     const res = await fetcher(
-      `${process.env.FBS_CMS_API_URL}/external/v1/${agencyid}/authentication/login`,
+      `${fbsCmsUrl}/external/v1/${agencyid}/authentication/login`,
       options,
       log
     );

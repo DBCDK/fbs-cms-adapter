@@ -16,6 +16,7 @@ function init({ redis, log }) {
     skipCache = false,
   }) {
     const agencyid = configuration.fbs.agencyid;
+    const fbsCmsUrl = configuration.fbs.url || process.env.FBS_CMS_API_URL;
     const userId = configuration.user.id;
 
     const redisVal = !skipCache && (await redis.get(token));
@@ -24,7 +25,7 @@ function init({ redis, log }) {
       return redisVal;
     }
 
-    const path = `${process.env.FBS_CMS_API_URL}/external/${agencyid}/patrons/preauthenticated/v9`;
+    const path = `${fbsCmsUrl}/external/${agencyid}/patrons/preauthenticated/v9`;
     const options = {
       method: "POST",
       headers: {
