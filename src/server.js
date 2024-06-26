@@ -202,7 +202,7 @@ module.exports = async function (fastify, opts) {
           proxyResponse = await proxy.fetch({
             sessionKey,
             patronId,
-            agencyid: configuration.fbs.agencyid,
+            configuration,
             cpr,
           });
         } catch (e) {
@@ -225,7 +225,7 @@ module.exports = async function (fastify, opts) {
             proxyResponse = await proxy.fetch({
               sessionKey,
               patronId,
-              agencyid: configuration.fbs.agencyid,
+              configuration,
               cpr,
             });
           } else {

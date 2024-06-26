@@ -51,7 +51,10 @@ function init({ url, method, headers, body, log }) {
   /**
    * The actual fetch function
    */
-  async function fetch({ sessionKey, agencyid, patronId, cpr }) {
+  async function fetch({ sessionKey, configuration, patronId, cpr }) {
+    const agencyid = configuration.fbs.agencyid;
+    const fbsCmsUrl = configuration.fbs.url || process.env.FBS_CMS_API_URL;
+
     const options = {
       method: method,
       headers: {
@@ -80,7 +83,7 @@ function init({ url, method, headers, body, log }) {
     }
 
     let res = await fetcher(
-      process.env.FBS_CMS_API_URL + replacePath({ url, agencyid, patronId }),
+      fbsCmsUrl + replacePath({ url, agencyid, patronId }),
       options,
       log
     );

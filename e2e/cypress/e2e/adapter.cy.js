@@ -417,6 +417,58 @@ describe("Testing the FBS CMS adapter", () => {
       });
     });
 
+    it("Using alternative fbs-cms URL, it returns fbs cms response for /patronid/ path when token has valid FBS credentials and user", () => {
+      /**
+       * Expected flow:
+       * 1. Adapter uses token to fetch smaug configuration containing both user and fbs credentials
+       *    fbs credentials contains URL, and this is used instead of the default
+       * 2. smaug configuration is succesfully validated
+       * 3. sessionKey is fetched from Fbs using FBS credentials from smaug configuration
+       * 4. patronId is fetched from FBS using sessionKey
+       * 5. The url is replaced with values for agencyId and patronId
+       * 6. The request is then forwarded to Fbs CMS with succes
+       */
+
+      const urlFromSmaugClient = "/fbscms-url-from-smaug-client";
+      // Setup mocks
+      mockSmaug({
+        token: "TOKEN",
+        status: 200,
+        body: {
+          user: validSmaugUser,
+          fbs: {
+            ...validSmaugFbsCredentials,
+            url: "http://http_mock:3000" + urlFromSmaugClient,
+          },
+        },
+      });
+      mockFetchFbsSessionKeySucces(urlFromSmaugClient);
+      mockFetchFbsPatronIdSucces(urlFromSmaugClient);
+      mockFetchFbsCmsAuthenticatedPathSucces(urlFromSmaugClient);
+
+      // Send request to adapter
+      cy.request({
+        url: "/external/agencyid/patrons/patronid/some/path",
+        headers: {
+          Authorization: "Bearer TOKEN",
+        },
+        failOnStatusCode: false,
+      }).then((res) => {
+        expect(res.status).to.eq(200);
+        expect(res.body).to.deep.include({
+          message: "hello patron",
+        });
+      });
+
+      // Redis should have updated values
+      redisGet({ key: "TOKEN", namespace: "sessionkey" }).then((value) => {
+        expect(value).to.equal("SOME_VALID_SESSION_KEY");
+      });
+      redisGet({ key: "TOKEN", namespace: "patronid" }).then((value) => {
+        expect(value).to.equal("1234");
+      });
+    });
+
     it("Uses cached sessionKey and patronId", () => {
       /**
        * Expected flow:
@@ -770,11 +822,11 @@ function mockSmaug({ token, status, body }) {
   });
 }
 
-function mockFetchFbsSessionKeySucces() {
+function mockFetchFbsSessionKeySucces(basePath = "/fbscms") {
   mockHTTP({
     request: {
       method: "POST",
-      path: "/fbscms/external/v1/some-agencyid/authentication/login",
+      path: `${basePath}/external/v1/some-agencyid/authentication/login`,
       body: {
         username: validSmaugFbsCredentials.username,
         password: validSmaugFbsCredentials.password,
@@ -787,11 +839,11 @@ function mockFetchFbsSessionKeySucces() {
   });
 }
 
-function mockFetchFbsPatronIdSucces() {
+function mockFetchFbsPatronIdSucces(basePath = "/fbscms") {
   mockHTTP({
     request: {
       method: "POST",
-      path: "/fbscms/external/some-agencyid/patrons/preauthenticated/v9",
+      path: `${basePath}/external/some-agencyid/patrons/preauthenticated/v9`,
       headers: {
         "x-session": "SOME_VALID_SESSION_KEY",
       },
@@ -809,11 +861,11 @@ function mockFetchFbsPatronIdSucces() {
   });
 }
 
-function mockFetchFbsPatronIdExpiredSessionKey() {
+function mockFetchFbsPatronIdExpiredSessionKey(basePath = "/fbscms") {
   mockHTTP({
     request: {
       method: "POST",
-      path: "/fbscms/external/some-agencyid/patrons/preauthenticated/v9",
+      path: `${basePath}/external/some-agencyid/patrons/preauthenticated/v9`,
       headers: {
         "x-session": "SOME_EXPIRED_SESSION_KEY",
       },
@@ -826,11 +878,11 @@ function mockFetchFbsPatronIdExpiredSessionKey() {
   });
 }
 
-function mockFetchFbsCmsAnonymousPathSucces() {
+function mockFetchFbsCmsAnonymousPathSucces(basePath = "/fbscms") {
   mockHTTP({
     request: {
       method: "GET",
-      path: "/fbscms/external/some-agencyid/some/path",
+      path: `${basePath}/external/some-agencyid/some/path`,
       headers: {
         "x-session": "SOME_VALID_SESSION_KEY",
       },
@@ -842,11 +894,11 @@ function mockFetchFbsCmsAnonymousPathSucces() {
   });
 }
 
-function mockFetchFbsCmsAnonymousPathPostSucces() {
+function mockFetchFbsCmsAnonymousPathPostSucces(basePath = "/fbscms") {
   mockHTTP({
     request: {
       method: "POST",
-      path: "/fbscms/external/some-agencyid/some/path",
+      path: `${basePath}/external/some-agencyid/some/path`,
       headers: {
         "x-session": "SOME_VALID_SESSION_KEY",
       },
@@ -861,11 +913,11 @@ function mockFetchFbsCmsAnonymousPathPostSucces() {
   });
 }
 
-function mockFetchFbsCmsAnonymousPathExpiredSessionKey() {
+function mockFetchFbsCmsAnonymousPathExpiredSessionKey(basePath = "/fbscms") {
   mockHTTP({
     request: {
       method: "GET",
-      path: "/fbscms/external/some-agencyid/some/path",
+      path: `${basePath}/external/some-agencyid/some/path`,
       headers: {
         "x-session": "SOME_EXPIRED_SESSION_KEY",
       },
@@ -877,11 +929,11 @@ function mockFetchFbsCmsAnonymousPathExpiredSessionKey() {
   });
 }
 
-function mockFetchFbsCmsAuthenticatedPathSucces() {
+function mockFetchFbsCmsAuthenticatedPathSucces(basePath = "/fbscms") {
   mockHTTP({
     request: {
       method: "GET",
-      path: "/fbscms/external/some-agencyid/patrons/1234/some/path",
+      path: `${basePath}/external/some-agencyid/patrons/1234/some/path`,
       headers: {
         "x-session": "SOME_VALID_SESSION_KEY",
       },
@@ -893,11 +945,13 @@ function mockFetchFbsCmsAuthenticatedPathSucces() {
   });
 }
 
-function mockFetchFbsCmsAuthenticatedPathExpiredSessionKey() {
+function mockFetchFbsCmsAuthenticatedPathExpiredSessionKey(
+  basePath = "/fbscms"
+) {
   mockHTTP({
     request: {
       method: "GET",
-      path: "/fbscms/external/some-agencyid/patrons/12345/some/path",
+      path: `${basePath}/external/some-agencyid/patrons/12345/some/path`,
       headers: {
         "x-session": "SOME_EXPIRED_SESSION_KEY",
       },
@@ -952,11 +1006,11 @@ function mockFetchUserinfoAuthenticatedTokenNoCPR() {
   });
 }
 
-function mockCreatePatronInjectedCprSucces() {
+function mockCreatePatronInjectedCprSucces(basePath = "/fbscms") {
   mockHTTP({
     request: {
       method: "POST",
-      path: `/fbscms/external/some-agencyid/patrons/v9`,
+      path: `${basePath}/external/some-agencyid/patrons/v9`,
       body: '{"personIdentifier":"some-cpr"}',
     },
     response: {
@@ -966,11 +1020,11 @@ function mockCreatePatronInjectedCprSucces() {
   });
 }
 
-function mockCreatePatronWithGuardianInjectedCprSucces() {
+function mockCreatePatronWithGuardianInjectedCprSucces(basePath = "/fbscms") {
   mockHTTP({
     request: {
       method: "POST",
-      path: `/fbscms/external/some-agencyid/patrons/withGuardian/v3`,
+      path: `${basePath}/external/some-agencyid/patrons/withGuardian/v3`,
       body: {
         "some-prop": "some-value",
         guardian: {
@@ -987,11 +1041,11 @@ function mockCreatePatronWithGuardianInjectedCprSucces() {
   });
 }
 
-function mockUpdatePatronPincodeInjectedCprSucces() {
+function mockUpdatePatronPincodeInjectedCprSucces(basePath = "/fbscms") {
   mockHTTP({
     request: {
       method: "PUT",
-      path: `/fbscms/external/some-agencyid/patrons/1234/v8`,
+      path: `${basePath}/external/some-agencyid/patrons/1234/v8`,
       headers: {
         "x-session": "SOME_VALID_SESSION_KEY",
       },
