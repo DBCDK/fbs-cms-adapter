@@ -8,6 +8,7 @@ const initSmaug = require("./clients/smaug");
 const initProxy = require("./clients/proxy");
 const initUserinfo = require("./clients/userinfo");
 const initPreauthenticated = require("./clients/preauthenticated");
+const initAuthenticate = require("./clients/authenticate");
 const initFbsLogin = require("./clients/fbslogin");
 const initLogger = require("./logger");
 const { nanoToMs } = require("./utils");
@@ -139,6 +140,10 @@ module.exports = async function (fastify, opts) {
           body: request.body,
           log: requestLogger,
         });
+        const authenticate = initAuthenticate({
+          log: requestLogger,
+          redis: redisPatronId,
+        });
         const preauthenticated = initPreauthenticated({
           log: requestLogger,
           redis: redisPatronId,
@@ -159,24 +164,41 @@ module.exports = async function (fastify, opts) {
         // The smaug token extracted from authorization header
         const token = request.headers.authorization.replace(/bearer /i, "");
 
+        // Check if we need to fetch patronId
+        const patronIdRequired = request.url.includes("/patronid/");
+
         // check method and url matches whitelist item -> this will allow userinfo to be called to get cpr
         const cprRequired = !!whitelist.userinfo.find(
           (obj) => obj.method === request.method && obj.url === request.url
         );
+
+        //  Get userinfo attributes
+        const attributes = await userinfo.fetch({ token });
+
         // if allowed, retrieve cpr from token
         let cpr = null;
         if (cprRequired) {
-          cpr = await userinfo.fetch({ token });
-        }
+          // ensure user has loggedIn by using nem-id (throws)
+          initUserinfo.validateUserinfoCPR({
+            attributes,
+            log: requestLogger,
+            token,
+          });
 
-        // Check if we need to fetch patronId
-        const patronIdRequired = request.url.includes("/patronid/");
+          cpr = attributes.cpr;
+        }
 
         // The smaug configuration, fetched and validated
         const configuration = await smaug.fetch({
           token,
           patronIdRequired,
         });
+
+        // nemlogin provider used
+        const isNemlogin = attributes.idpUsed === "nemlogin";
+
+        // The FBS authentication method
+        const auth = isNemlogin ? preauthenticated : authenticate;
 
         // We need to login and get a sessionKey in order to call the FBS API
         let sessionKey = await fbsLogin.fetch({
@@ -192,10 +214,11 @@ module.exports = async function (fastify, opts) {
 
         try {
           if (patronIdRequired) {
-            patronId = await preauthenticated.fetch({
+            patronId = await auth.fetch({
               token,
               sessionKey,
               configuration,
+              attributes,
             });
           }
 
@@ -215,10 +238,11 @@ module.exports = async function (fastify, opts) {
               skipCache: true,
             });
             if (patronIdRequired) {
-              patronId = await preauthenticated.fetch({
+              patronId = await auth.fetch({
                 token,
                 sessionKey,
                 configuration,
+                attributes,
                 skipCache: true,
               });
             }

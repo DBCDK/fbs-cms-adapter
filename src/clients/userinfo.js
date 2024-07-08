@@ -32,10 +32,7 @@ function init({ log }) {
 
     switch (res.code) {
       case 200:
-        const attributes = res.body && res.body.attributes;
-        // ensure user has loggedIn by using nem-id
-        validateUserinfoCPR({ attributes, log, token });
-        return attributes.cpr;
+        return res.body && res.body.attributes;
       case 401:
         validateUserinfoCPR({ log }); // fails
       default:
