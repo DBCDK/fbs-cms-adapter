@@ -6,7 +6,10 @@ const { v4: uuidv4 } = require("uuid");
 const createRedis = require("./clients/redis");
 const initSmaug = require("./clients/smaug");
 const initProxy = require("./clients/proxy");
-const initUserinfo = require("./clients/userinfo");
+const {
+  init: initUserinfo,
+  validateUserinfoCPR,
+} = require("./clients/userinfo");
 const initPreauthenticated = require("./clients/preauthenticated");
 const initAuthenticate = require("./clients/authenticate");
 const initFbsLogin = require("./clients/fbslogin");
@@ -140,14 +143,19 @@ module.exports = async function (fastify, opts) {
           body: request.body,
           log: requestLogger,
         });
+
+        // The authenticate method is used for validating "borchk validated" users
         const authenticate = initAuthenticate({
           log: requestLogger,
           redis: redisPatronId,
         });
+
+        // The preauthenticated method is used for nemlogin validated users (where we do NOT have a pincode)
         const preauthenticated = initPreauthenticated({
           log: requestLogger,
           redis: redisPatronId,
         });
+
         const fbsLogin = initFbsLogin({
           log: requestLogger,
           redis: redisSessionKey,
@@ -167,7 +175,7 @@ module.exports = async function (fastify, opts) {
         // Check if we need to fetch patronId
         const patronIdRequired = request.url.includes("/patronid/");
 
-        // check method and url matches whitelist item -> this will allow userinfo to be called to get cpr
+        // Check if method and url requires a CPR to be attached to the user
         const cprRequired = !!whitelist.userinfo.find(
           (obj) => obj.method === request.method && obj.url === request.url
         );
@@ -175,11 +183,11 @@ module.exports = async function (fastify, opts) {
         //  Get userinfo attributes
         const attributes = await userinfo.fetch({ token });
 
-        // if allowed, retrieve cpr from token
+        // If CPR is required we set CPR from userinfo attributes
         let cpr = null;
         if (cprRequired) {
-          // ensure user has loggedIn by using nem-id (throws)
-          initUserinfo.validateUserinfoCPR({
+          // ensure user is nemid validated (has cpr attribute) -> throws if not
+          validateUserinfoCPR({
             attributes,
             log: requestLogger,
             token,
@@ -195,9 +203,9 @@ module.exports = async function (fastify, opts) {
         });
 
         // nemlogin provider used
-        const isNemlogin = attributes.idpUsed === "nemlogin";
+        const isNemlogin = attributes?.idpUsed === "nemlogin";
 
-        // The FBS authentication method
+        // Set the FBS authentication method (preauthenticated/autenticate)
         const auth = isNemlogin ? preauthenticated : authenticate;
 
         // We need to login and get a sessionKey in order to call the FBS API

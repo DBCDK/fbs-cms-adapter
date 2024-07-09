@@ -49,4 +49,4 @@ function init({ log }) {
   return { fetch };
 }
 
-module.exports = init;
+module.exports = { init, validateUserinfoCPR };

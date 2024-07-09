@@ -3,7 +3,7 @@ const HttpsProxyAgent = require("https-proxy-agent");
 const { fetcher } = require("../utils");
 
 /**
- * Initializes the authenticat fetcher
+ * Initializes the authenticate fetcher
  */
 function init({ redis, log }) {
   /**
