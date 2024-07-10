@@ -98,9 +98,18 @@ module.exports = async function (fastify, opts) {
     done();
   });
 
+  fastify.addHook("onSend", function (_request, reply, payload, next) {
+    // save response body for logging in "onResponse"
+    reply.raw.payload = payload;
+    next();
+  });
+
   fastify.addHook("onResponse", (request, reply, done) => {
     request.requestLogger.info("onResponse", {
-      response: { status: reply.statusCode },
+      response: {
+        status: reply.statusCode,
+        payload: reply.raw?.payload,
+      },
       timings: { ms: nanoToMs(process.hrtime(request.timings.start)[1]) },
     });
     done();
