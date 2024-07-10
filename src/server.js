@@ -10,7 +10,7 @@ const initUserinfo = require("./clients/userinfo");
 const initPreauthenticated = require("./clients/preauthenticated");
 const initFbsLogin = require("./clients/fbslogin");
 const initLogger = require("./logger");
-const { nanoToMs } = require("./utils");
+const { nanoToMs, ensureString } = require("./utils");
 
 // JSON Schema for validating the request headers
 const schema = {
@@ -98,7 +98,27 @@ module.exports = async function (fastify, opts) {
     done();
   });
 
+  fastify.addHook("onSend", function (_request, reply, payload, next) {
+    // save response body for logging in "onResponse"
+    reply.raw.payload = payload;
+    next();
+  });
+
   fastify.addHook("onResponse", (request, reply, done) => {
+    request.requestLogger.debug("DEBUG", {
+      requestObj: {
+        method: request.method,
+        url: request.url,
+        body: ensureString(request.body),
+        headers: request.headers,
+        hostname: request.hostname,
+      },
+      response: {
+        status: reply.statusCode,
+        body: ensureString(reply.raw?.payload),
+      },
+    });
+
     request.requestLogger.info("onResponse", {
       response: { status: reply.statusCode },
       timings: { ms: nanoToMs(process.hrtime(request.timings.start)[1]) },
