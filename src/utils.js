@@ -65,7 +65,19 @@ function nanoToMs(nano) {
   return Math.round(nano / 1000000);
 }
 
+/**
+ * Convert to string
+ *
+ * @param {object|string} el
+ * @returns {string}
+ */
+function ensureString(el) {
+  const isString = typeof el === "string";
+  return isString ? el : JSON.stringify(el);
+}
+
 module.exports = {
   fetcher,
   nanoToMs,
+  ensureString,
 };
