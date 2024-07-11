@@ -15,6 +15,8 @@ function init({ redis, log }) {
     configuration,
     skipCache = false,
   }) {
+    const time = performance.now();
+
     const agencyid = configuration.fbs.agencyid;
     const fbsCmsUrl = configuration.fbs.url || process.env.FBS_CMS_API_URL;
     const userId = configuration.user.id;
@@ -40,6 +42,13 @@ function init({ redis, log }) {
     }
 
     let res = await fetcher(path, options, log);
+
+    // log response to summary
+    log.summary.datasources.preauthenticated = {
+      code: res.code,
+      time: performance.now() - time,
+    };
+
     switch (res.code) {
       case 200:
         const patronId = res.body.patron && res.body.patron.patronId + "";

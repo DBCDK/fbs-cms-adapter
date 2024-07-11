@@ -52,6 +52,7 @@ function init({ url, method, headers, body, log }) {
    * The actual fetch function
    */
   async function fetch({ sessionKey, configuration, patronId, cpr }) {
+    const time = performance.now();
     const agencyid = configuration.fbs.agencyid;
     const fbsCmsUrl = configuration.fbs.url || process.env.FBS_CMS_API_URL;
 
@@ -87,6 +88,12 @@ function init({ url, method, headers, body, log }) {
       options,
       log
     );
+
+    // log response to summary
+    log.summary.datasources.fbs = {
+      code: res.code,
+      time: performance.now() - time,
+    };
 
     switch (res.code) {
       case 401:
