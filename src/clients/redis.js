@@ -32,11 +32,18 @@ function createRedis({ log: appLogger, namespace }) {
      * Adds some error handling as well as logging
      */
     async function get(key) {
-      const start = process.hrtime();
+      const time = performance.now();
       try {
         const res = await redis.get(key);
+
+        // log response to summary
+        log.summary.datasources.redis = {
+          code: !!res ? 200 : 404,
+          time: performance.now() - time,
+        };
+
         log.info(`Redis: GET ${namespace}:${key}->${res}`, {
-          timings: { ms: nanoToMs(process.hrtime(start)[1]) },
+          timings: { ms: performance.now() - time },
         });
         return res;
       } catch (error) {
@@ -46,7 +53,7 @@ function createRedis({ log: appLogger, namespace }) {
             error: String(e),
             stacktrace: e.stack,
             namespace,
-            timings: { ms: nanoToMs(process.hrtime(start)[1]) },
+            timings: { ms: performance.now() - time },
           }
         );
         throw { code: 500, body: "internal server error" };
@@ -58,11 +65,11 @@ function createRedis({ log: appLogger, namespace }) {
      * Adds some error handling as well as logging
      */
     async function set(key, value) {
-      const start = process.hrtime();
+      const time = performance.now();
       try {
         await redis.set(key, value);
         log.info(`Redis: SET ${namespace}:${key}->${value}`, {
-          timings: { ms: nanoToMs(process.hrtime(start)[1]) },
+          timings: { ms: performance.now() - time },
         });
       } catch (error) {
         log.error(
@@ -71,7 +78,7 @@ function createRedis({ log: appLogger, namespace }) {
             error: String(e),
             stacktrace: e.stack,
             namespace,
-            timings: { ms: nanoToMs(process.hrtime(start)[1]) },
+            timings: { ms: performance.now() - time },
           }
         );
         throw { code: 500, body: "internal server error" };
