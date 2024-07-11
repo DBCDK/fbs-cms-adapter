@@ -10,7 +10,7 @@ const initUserinfo = require("./clients/userinfo");
 const initPreauthenticated = require("./clients/preauthenticated");
 const initFbsLogin = require("./clients/fbslogin");
 const initLogger = require("./logger");
-const { nanoToMs, ensureString } = require("./utils");
+const { ensureString } = require("./utils");
 
 // JSON Schema for validating the request headers
 const schema = {
@@ -221,11 +221,11 @@ module.exports = async function (fastify, opts) {
         });
 
         // add to summary log
-        requestLogger.summary.isAuthenticatedToken = !!configuration.user.id;
+        requestLogger.summary.isAuthenticatedToken = !!configuration?.user?.id;
 
         // add to summary log
-        requestLogger.summary.agencyId = configuration.agencyId;
-        requestLogger.summary.clientId = configuration.app.clientId;
+        requestLogger.summary.agencyId = configuration?.agencyId;
+        requestLogger.summary.clientId = configuration?.app?.clientId;
 
         // We need to login and get a sessionKey in order to call the FBS API
         let sessionKey = await fbsLogin.fetch({

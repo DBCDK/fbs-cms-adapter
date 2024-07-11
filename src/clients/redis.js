@@ -1,5 +1,4 @@
 const Redis = require("ioredis");
-const { nanoToMs } = require("../utils");
 
 const options = {
   host: process.env.REDIS_CLUSTER_HOST || process.env.REDIS_HOST,
