@@ -6,8 +6,12 @@ const { v4: uuidv4 } = require("uuid");
 const createRedis = require("./clients/redis");
 const initSmaug = require("./clients/smaug");
 const initProxy = require("./clients/proxy");
-const initUserinfo = require("./clients/userinfo");
+const {
+  init: initUserinfo,
+  validateUserinfoCPR,
+} = require("./clients/userinfo");
 const initPreauthenticated = require("./clients/preauthenticated");
+const initAuthenticate = require("./clients/authenticate");
 const initFbsLogin = require("./clients/fbslogin");
 const initLogger = require("./logger");
 const { ensureString } = require("./utils");
@@ -171,10 +175,19 @@ module.exports = async function (fastify, opts) {
           body: request.body,
           log: requestLogger,
         });
+
+        // The authenticate method is used for validating "borchk validated" users
+        const authenticate = initAuthenticate({
+          log: requestLogger,
+          redis: redisPatronId,
+        });
+
+        // The preauthenticated method is used for nemlogin validated users (where we do NOT have a pincode)
         const preauthenticated = initPreauthenticated({
           log: requestLogger,
           redis: redisPatronId,
         });
+
         const fbsLogin = initFbsLogin({
           log: requestLogger,
           redis: redisSessionKey,
@@ -194,22 +207,33 @@ module.exports = async function (fastify, opts) {
         // The smaug token extracted from authorization header
         const token = request.headers.authorization.replace(/bearer /i, "");
 
-        // check method and url matches whitelist item -> this will allow userinfo to be called to get cpr
+        // Check if we need to fetch patronId
+        const patronIdRequired = request.url.includes("/patronid/");
+
+        // Check if method and url requires a CPR to be attached to the user
         const cprRequired = !!whitelist.userinfo.find(
           (obj) => obj.method === request.method && obj.url === request.url
         );
 
+        //  Get userinfo attributes
+        const attributes = await userinfo.fetch({ token });
+
+        // If CPR is required we set CPR from userinfo attributes
         // add to summary log
         requestLogger.summary.cprRequired = cprRequired;
 
         // if allowed, retrieve cpr from token
         let cpr = null;
         if (cprRequired) {
-          cpr = await userinfo.fetch({ token });
-        }
+          // ensure user is nemid validated (has cpr attribute) -> throws if not
+          validateUserinfoCPR({
+            attributes,
+            log: requestLogger,
+            token,
+          });
 
-        // Check if we need to fetch patronId
-        const patronIdRequired = request.url.includes("/patronid/");
+          cpr = attributes.cpr;
+        }
 
         // add to summary log
         requestLogger.summary.patronIdRequired = patronIdRequired;
@@ -220,6 +244,11 @@ module.exports = async function (fastify, opts) {
           patronIdRequired,
         });
 
+        // nemlogin provider used
+        const isNemlogin = attributes?.idpUsed === "nemlogin";
+
+        // Set the FBS authentication method (preauthenticated/autenticate)
+        const auth = isNemlogin ? preauthenticated : authenticate;
         // add to summary log
         requestLogger.summary.isAuthenticatedToken = !!configuration?.user?.id;
 
@@ -244,10 +273,11 @@ module.exports = async function (fastify, opts) {
 
         try {
           if (patronIdRequired) {
-            patronId = await preauthenticated.fetch({
+            patronId = await auth.fetch({
               token,
               sessionKey,
               configuration,
+              attributes,
             });
           }
 
@@ -274,10 +304,11 @@ module.exports = async function (fastify, opts) {
             requestLogger.summary.sessionKeyRefetch = true;
 
             if (patronIdRequired) {
-              patronId = await preauthenticated.fetch({
+              patronId = await auth.fetch({
                 token,
                 sessionKey,
                 configuration,
+                attributes,
                 skipCache: true,
               });
             }

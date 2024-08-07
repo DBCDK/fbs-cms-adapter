@@ -39,6 +39,7 @@ services:
 
       # staging
       # - FBS_CMS_API_URL=https://et.cicero-fbs.com/rest
+      
     ports:
       - "3000:3000"
     volumes:

@@ -3,7 +3,7 @@ const HttpsProxyAgent = require("https-proxy-agent");
 const { fetcher } = require("../utils");
 
 /**
- * Initializes the preauthenticated fetcher
+ * Initializes the authenticate fetcher
  */
 function init({ redis, log }) {
   /**
@@ -13,13 +13,13 @@ function init({ redis, log }) {
     token,
     sessionKey,
     configuration,
+    attributes,
     skipCache = false,
   }) {
-    const time = performance.now();
-
     const agencyid = configuration.fbs.agencyid;
     const fbsCmsUrl = configuration.fbs.url || process.env.FBS_CMS_API_URL;
-    const userId = configuration.user.id;
+    const userId = attributes.userId;
+    const userPin = attributes.pincode;
 
     const redisVal = !skipCache && (await redis.get(token));
 
@@ -27,14 +27,16 @@ function init({ redis, log }) {
       return redisVal;
     }
 
-    const path = `${fbsCmsUrl}/external/${agencyid}/patrons/preauthenticated/v9`;
+    const credentials = { libraryCardNumber: userId, pincode: userPin };
+
+    const path = `${fbsCmsUrl}/external/${agencyid}/patrons/authenticate/v9`;
     const options = {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-Session": sessionKey,
       },
-      body: userId,
+      body: JSON.stringify(credentials),
     };
 
     if (process.env.HTTPS_PROXY) {
@@ -43,18 +45,12 @@ function init({ redis, log }) {
 
     let res = await fetcher(path, options, log);
 
-    // log response to summary
-    log.summary.datasources.preauthenticated = {
-      code: res.code,
-      time: performance.now() - time,
-    };
-
     switch (res.code) {
       case 200:
-        const patronId = res.body.patron && res.body.patron.patronId + "";
+        const patronId = res.body.patronId + "";
         if (!patronId) {
           log.error(
-            `Failed to fetch patronId from /preauthenticated. User was not authenticated`
+            `Failed to fetch patronId from /authenticate. User was not authenticated`
           );
           throw res;
         }
@@ -65,7 +61,7 @@ function init({ redis, log }) {
         throw res;
       default:
         log.error(
-          `Failed to fetch patronId from /preauthenticated. This is unexpected`,
+          `Failed to fetch patronId from /authenticate. This is unexpected`,
           {
             response: { status: res.code, body: res.body },
           }

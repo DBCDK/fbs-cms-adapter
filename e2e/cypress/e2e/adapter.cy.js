@@ -6,6 +6,12 @@ const validSmaugUser = {
   id: "some-cpr",
   pin: "some-pin",
 };
+
+const validUserinfoUser = {
+  userId: "some-userId",
+  pincode: "some-pincode",
+};
+
 const validSmaugFbsCredentials = {
   agencyid: "some-agencyid",
   username: "some-username",
@@ -43,6 +49,7 @@ describe("Testing the FBS CMS adapter", () => {
        */
 
       // Setup mocks
+      mockFetchUserinfoAuthenticatedTokenSucces();
       mockSmaug({ token: "TOKEN", status: 404, body: "" });
 
       // Send request to adapter
@@ -104,6 +111,9 @@ describe("Testing the FBS CMS adapter", () => {
         "TOKEN_WITHOUT_FBS_USERNAME",
         "TOKEN_WITHOUT_FBS_PASSWORD",
       ].forEach((token) => {
+        // Setup mocks
+        mockFetchUserinfoAuthenticatedTokenSucces(token);
+
         cy.request({
           url: `/external/agencyid/some/path`,
           headers: {
@@ -175,6 +185,8 @@ describe("Testing the FBS CMS adapter", () => {
        */
 
       // Setup mocks
+      mockFetchUserinfoAuthenticatedTokenSucces();
+
       mockSmaug({
         token: "TOKEN",
         status: 200,
@@ -216,6 +228,8 @@ describe("Testing the FBS CMS adapter", () => {
        */
 
       // Setup mocks
+      mockFetchUserinfoAuthenticatedTokenSucces();
+
       mockSmaug({
         token: "TOKEN",
         status: 200,
@@ -259,6 +273,8 @@ describe("Testing the FBS CMS adapter", () => {
        */
 
       // Setup mocks
+      mockFetchUserinfoAuthenticatedTokenSucces();
+
       mockSmaug({
         token: "TOKEN",
         status: 200,
@@ -301,6 +317,7 @@ describe("Testing the FBS CMS adapter", () => {
        */
 
       // Setup mocks
+      mockFetchUserinfoAuthenticatedTokenSucces();
       mockSmaug({
         token: "TOKEN",
         status: 200,
@@ -347,6 +364,7 @@ describe("Testing the FBS CMS adapter", () => {
        */
 
       // Setup mocks
+      mockFetchUserinfoAuthenticatedTokenSucces();
       mockSmaug({
         token: "TOKEN",
         status: 200,
@@ -382,6 +400,7 @@ describe("Testing the FBS CMS adapter", () => {
        */
 
       // Setup mocks
+      mockFetchUserinfoAuthenticatedTokenSucces();
       mockSmaug({
         token: "TOKEN",
         status: 200,
@@ -430,7 +449,9 @@ describe("Testing the FBS CMS adapter", () => {
        */
 
       const urlFromSmaugClient = "/fbscms-url-from-smaug-client";
+
       // Setup mocks
+      mockFetchUserinfoAuthenticatedTokenSucces();
       mockSmaug({
         token: "TOKEN",
         status: 200,
@@ -480,6 +501,7 @@ describe("Testing the FBS CMS adapter", () => {
        */
 
       // Setup mocks
+      mockFetchUserinfoAuthenticatedTokenSucces();
       mockSmaug({
         token: "TOKEN",
         status: 200,
@@ -525,6 +547,7 @@ describe("Testing the FBS CMS adapter", () => {
        */
 
       // Setup mocks
+      mockFetchUserinfoAuthenticatedTokenSucces();
       mockSmaug({
         token: "TOKEN",
         status: 200,
@@ -581,6 +604,7 @@ describe("Testing the FBS CMS adapter", () => {
        */
 
       // Setup mocks
+      mockFetchUserinfoAuthenticatedTokenSucces();
       mockSmaug({
         token: "TOKEN",
         status: 200,
@@ -784,6 +808,60 @@ describe("Testing the FBS CMS adapter", () => {
       });
     });
   });
+
+  describe("selecting authentication path", () => {
+    it("should use /authenticate path for borchk validated users", () => {
+      /**
+       * Expected flow:
+       * 1. Adapter uses token to fetch smaug configuration containing both user and fbs credentials
+       * 2. smaug configuration is succesfully validated
+       * 3. sessionKey is fetched from Fbs using FBS credentials from smaug configuration
+       * 4. patronId is fetched from FBS using sessionKey
+       * 5. The url is replaced with values for agencyId and patronId
+       * 6. The request is then forwarded to Fbs CMS with succes
+       */
+
+      // Setup mocks
+      mockFetchUserinfoAuthenticatedTokenNoCPR();
+      mockSmaug({
+        token: "TOKEN_WITH_NO_CPR",
+        status: 200,
+        body: {
+          user: validSmaugUser,
+          fbs: validSmaugFbsCredentials,
+        },
+      });
+      mockFetchFbsSessionKeySucces();
+      mockFetchFbsPatronIdSuccesInstitution();
+      mockFetchFbsCmsAuthenticatedPathSucces();
+
+      // Send request to adapter
+      cy.request({
+        url: "/external/agencyid/patrons/patronid/some/path",
+        headers: {
+          Authorization: "Bearer TOKEN_WITH_NO_CPR",
+        },
+        failOnStatusCode: false,
+      }).then((res) => {
+        expect(res.status).to.eq(200);
+        expect(res.body).to.deep.include({
+          message: "hello patron",
+        });
+      });
+
+      // Redis should have updated values
+      redisGet({ key: "TOKEN_WITH_NO_CPR", namespace: "sessionkey" }).then(
+        (value) => {
+          expect(value).to.equal("SOME_VALID_SESSION_KEY");
+        }
+      );
+      redisGet({ key: "TOKEN_WITH_NO_CPR", namespace: "patronid" }).then(
+        (value) => {
+          expect(value).to.equal("1234");
+        }
+      );
+    });
+  });
 });
 
 // ----- HELPER FUNCTIONS FOR MOCKING STUFF -----
@@ -856,6 +934,30 @@ function mockFetchFbsPatronIdSucces(basePath = "/fbscms") {
         patron: {
           patronId: 1234,
         },
+      },
+    },
+  });
+}
+
+function mockFetchFbsPatronIdSuccesInstitution(basePath = "/fbscms") {
+  mockHTTP({
+    request: {
+      method: "POST",
+      path: `${basePath}/external/some-agencyid/patrons/authenticate/v9`,
+      headers: {
+        "x-session": "SOME_VALID_SESSION_KEY",
+      },
+      body: {
+        libraryCardNumber: validUserinfoUser.userId,
+        pincode: validUserinfoUser.pincode,
+      },
+    },
+    response: {
+      status: 200,
+      body: {
+        patronId: 1234,
+        patronType: "COMPANY",
+        authenticateStatus: "VALID",
       },
     },
   });
@@ -963,13 +1065,13 @@ function mockFetchFbsCmsAuthenticatedPathExpiredSessionKey(
   });
 }
 
-function mockFetchUserinfoAuthenticatedTokenSucces() {
+function mockFetchUserinfoAuthenticatedTokenSucces(token = "TOKEN") {
   mockHTTP({
     request: {
       method: "GET",
       path: `/userinfo`,
       headers: {
-        authorization: "Bearer TOKEN",
+        authorization: `Bearer ${token}`,
       },
     },
     response: {
@@ -979,6 +1081,7 @@ function mockFetchUserinfoAuthenticatedTokenSucces() {
           cpr: "some-cpr",
           userId: "some-userId",
           pincode: "some-pincode",
+          idpUsed: "nemlogin",
         },
       },
     },
@@ -998,8 +1101,10 @@ function mockFetchUserinfoAuthenticatedTokenNoCPR() {
       status: 200,
       body: {
         attributes: {
+          cpr: null,
           userId: "some-userId",
           pincode: "some-pincode",
+          idpUsed: "borchk",
         },
       },
     },

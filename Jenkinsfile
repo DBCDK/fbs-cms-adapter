@@ -36,7 +36,7 @@ pipeline {
         }
         stage('Push to Artifactory') {
             when {
-                branch 'main'
+                branch 'test'
             }
             steps {
                 script {
@@ -49,7 +49,7 @@ pipeline {
                 } 
             }
         }
-        stage("Update staging version number") {
+        stage("Update test version number") {
             agent {
                 docker {
                     label 'devel11'
@@ -58,12 +58,12 @@ pipeline {
                 }
             }
             when {
-                branch "main"
+                branch "test"
             }
             steps {
                 dir("deploy") {
                     sh """#!/usr/bin/env bash
-						set-new-version configuration.yaml ${GITLAB_PRIVATE_TOKEN} ${GITLAB_ID} ${BUILD_NUMBER} -b staging
+						set-new-version configuration.yaml ${GITLAB_PRIVATE_TOKEN} ${GITLAB_ID} ${BUILD_NUMBER} -b test
 					"""
                 }
             }
