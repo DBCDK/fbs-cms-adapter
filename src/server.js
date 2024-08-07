@@ -14,7 +14,7 @@ const initPreauthenticated = require("./clients/preauthenticated");
 const initAuthenticate = require("./clients/authenticate");
 const initFbsLogin = require("./clients/fbslogin");
 const initLogger = require("./logger");
-const { nanoToMs } = require("./utils");
+const { ensureString } = require("./utils");
 
 // JSON Schema for validating the request headers
 const schema = {
@@ -86,6 +86,12 @@ module.exports = async function (fastify, opts) {
     // to every log line during this request
     request.requestLogger = appLogger.child({ reqId: uuidv4() });
 
+    // summary
+    request.requestLogger.summary = {
+      datasources: {},
+      total_ms: performance.now(),
+    };
+
     request.requestLogger.info("onRequest", {
       requestObj: {
         method: request.method,
@@ -102,11 +108,37 @@ module.exports = async function (fastify, opts) {
     done();
   });
 
+  fastify.addHook("onSend", function (_request, reply, payload, next) {
+    // save response body for logging in "onResponse"
+    reply.raw.payload = payload;
+    next();
+  });
+
   fastify.addHook("onResponse", (request, reply, done) => {
-    request.requestLogger.info("onResponse", {
-      response: { status: reply.statusCode },
-      timings: { ms: nanoToMs(process.hrtime(request.timings.start)[1]) },
+    request.requestLogger.debug("DEBUG", {
+      requestObj: {
+        method: request.method,
+        url: request.url,
+        body: ensureString(request.body),
+        headers: request.headers,
+        hostname: request.hostname,
+      },
+      response: {
+        status: reply.statusCode,
+        body: ensureString(reply.raw?.payload),
+      },
     });
+
+    const summary = request.requestLogger.summary;
+
+    request.requestLogger.info("onResponse", {
+      status: reply.statusCode,
+      method: request.method,
+      url: request.url,
+      ...summary,
+      total_ms: performance.now() - summary.total_ms,
+    });
+
     done();
   });
 
@@ -164,6 +196,9 @@ module.exports = async function (fastify, opts) {
         // url contains a /authenticate or /preauthenticated path (which should be hidden)
         const includesAuthenticate = !!request.url.includes("authenticate");
 
+        // add to summary log
+        requestLogger.summary.includesAuthenticatedPath = includesAuthenticate;
+
         // throw a 404 (not found) if path includes authenticate
         if (includesAuthenticate) {
           return reply.code(404).send({ message: "not found" });
@@ -184,6 +219,10 @@ module.exports = async function (fastify, opts) {
         const attributes = await userinfo.fetch({ token });
 
         // If CPR is required we set CPR from userinfo attributes
+        // add to summary log
+        requestLogger.summary.cprRequired = cprRequired;
+
+        // if allowed, retrieve cpr from token
         let cpr = null;
         if (cprRequired) {
           // ensure user is nemid validated (has cpr attribute) -> throws if not
@@ -196,6 +235,9 @@ module.exports = async function (fastify, opts) {
           cpr = attributes.cpr;
         }
 
+        // add to summary log
+        requestLogger.summary.patronIdRequired = patronIdRequired;
+
         // The smaug configuration, fetched and validated
         const configuration = await smaug.fetch({
           token,
@@ -207,12 +249,21 @@ module.exports = async function (fastify, opts) {
 
         // Set the FBS authentication method (preauthenticated/autenticate)
         const auth = isNemlogin ? preauthenticated : authenticate;
+        // add to summary log
+        requestLogger.summary.isAuthenticatedToken = !!configuration?.user?.id;
+
+        // add to summary log
+        requestLogger.summary.agencyId = configuration?.agencyId;
+        requestLogger.summary.clientId = configuration?.app?.clientId;
 
         // We need to login and get a sessionKey in order to call the FBS API
         let sessionKey = await fbsLogin.fetch({
           token,
           configuration,
         });
+
+        // add to summary log
+        requestLogger.summary.hasSessionKey = !!sessionKey;
 
         // Holds the patronId
         let patronId;
@@ -230,6 +281,9 @@ module.exports = async function (fastify, opts) {
             });
           }
 
+          // add to summary log
+          requestLogger.summary.hasPatronId = !!patronId;
+
           proxyResponse = await proxy.fetch({
             sessionKey,
             patronId,
@@ -245,6 +299,10 @@ module.exports = async function (fastify, opts) {
               configuration,
               skipCache: true,
             });
+
+            // add to summary log
+            requestLogger.summary.sessionKeyRefetch = true;
+
             if (patronIdRequired) {
               patronId = await auth.fetch({
                 token,

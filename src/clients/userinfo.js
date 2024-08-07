@@ -24,11 +24,19 @@ function init({ log }) {
    * The actual fetch function
    */
   async function fetch({ token }) {
+    const time = performance.now();
+
     const res = await fetcher(
       `${process.env.USERINFO_URL}`,
       { headers: { authorization: `Bearer ${token}` } },
       log
     );
+
+    // log response to summary
+    log.summary.datasources.userinfo = {
+      code: res.code,
+      time: performance.now() - time,
+    };
 
     switch (res.code) {
       case 200:

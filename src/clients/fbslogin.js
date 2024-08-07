@@ -10,6 +10,7 @@ function init({ redis, log }) {
    * The actual fetch function
    */
   async function fetch({ token, configuration, skipCache = false }) {
+    const time = performance.now();
     const { agencyid, username, password, url } = configuration.fbs;
 
     const fbsCmsUrl = url || process.env.FBS_CMS_API_URL;
@@ -37,6 +38,12 @@ function init({ redis, log }) {
       options,
       log
     );
+
+    // log response to summary
+    log.summary.datasources.fbslogin = {
+      code: res.code,
+      time: performance.now() - time,
+    };
 
     const sessionKey = res.body.sessionKey;
 

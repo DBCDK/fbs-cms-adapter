@@ -45,11 +45,20 @@ function init({ log }) {
    * The actual fetch function
    */
   async function fetch({ token, patronIdRequired }) {
+    const time = performance.now();
+
     const res = await fetcher(
       `${process.env.SMAUG_URL}?token=${token}`,
       {},
       log
     );
+
+    // log response to summary
+    log.summary.datasources.smaug = {
+      code: res.code,
+      time: performance.now() - time,
+    };
+
     switch (res.code) {
       case 200:
         const configuration = res.body;
