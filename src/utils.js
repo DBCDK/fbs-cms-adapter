@@ -4,7 +4,7 @@ const fetch = require("node-fetch");
  * Wraps fetch API
  * Adds some error handling as well as logging
  */
-async function fetcher(url, options, log) {
+async function fetcher(url, options={}, log) {
   const start = process.hrtime();
   let res;
   try {
@@ -13,7 +13,7 @@ async function fetcher(url, options, log) {
         (options && options.method) || "GET"
       } ${url}`,
       {
-        requestObj: options,
+        requestObj: {...options, headers: ensureString(options?.headers || "")},
         timings: { ms: nanoToMs(process.hrtime(start)[1]) },
       }
     );
