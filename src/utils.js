@@ -65,6 +65,55 @@ function nanoToMs(nano) {
   return Math.round(nano / 1000000);
 }
 
+function parseCredentials(str = "") {
+  const lines = str.split(/\r?\n/).filter((l) => l);
+  const map = {};
+  lines.forEach((line) => {
+    const arr = line.split(",");
+    map[arr[0]] = {
+      agencyId: arr[0],
+      isil: `DK-${arr[0]}`,
+      username: arr[1],
+      password: arr[2],
+    };
+  });
+  return map;
+}
+
+const credentialsList = parseCredentials(process.env.FBS_CMS_CREDENTIALS);
+
+function getCredentials({ agencyId, log }) {
+  console.log("credentialsList", credentialsList);
+
+  const credentials = credentialsList?.[agencyId];
+
+  if (!credentials?.username || !credentials?.password) {
+    log.debug(`Agency '${agencyId}' is missing FBS credentials`);
+    throw {
+      code: 403,
+      body: {
+        message: "Agency is missing FBS credentials",
+      },
+    };
+  }
+
+  return credentials;
+}
+
+function extractAgencyIdFromUrl(url = "") {
+  const parts = url.split("/");
+  const v1Index = parts.findIndex((part) => part === "v1");
+
+  if (v1Index !== -1 && parts.length > v1Index + 1) {
+    const agencyId = parts[v1Index + 1];
+    // Returnér null hvis agencyId bare er strengen "agencyid"
+    if (agencyId.toLowerCase() === "agencyid") return null;
+    return agencyId;
+  }
+
+  return null;
+}
+
 /**
  * Convert to string
  *
@@ -79,5 +128,7 @@ function ensureString(el) {
 module.exports = {
   fetcher,
   nanoToMs,
+  extractAgencyIdFromUrl,
+  getCredentials,
   ensureString,
 };

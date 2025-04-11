@@ -14,7 +14,11 @@ const initPreauthenticated = require("./clients/preauthenticated");
 const initAuthenticate = require("./clients/authenticate");
 const initFbsLogin = require("./clients/fbslogin");
 const initLogger = require("./logger");
-const { ensureString } = require("./utils");
+const {
+  ensureString,
+  getCredentials,
+  extractAgencyIdFromUrl,
+} = require("./utils");
 
 // JSON Schema for validating the request headers
 const schema = {
@@ -210,13 +214,32 @@ module.exports = async function (fastify, opts) {
         // Check if we need to fetch patronId
         const patronIdRequired = request.url.includes("/patronid/");
 
-        // Check if method and url requires a CPR to be attached to the user
-        const cprRequired = !!whitelist.userinfo.find(
-          (obj) => obj.method === request.method && obj.url === request.url
-        );
+        // add to summary log
+        requestLogger.summary.patronIdRequired = patronIdRequired;
+
+        // The smaug configuration, fetched and validated
+        const configuration = await smaug.fetch({
+          token,
+          patronIdRequired,
+        });
+
+        // Check if token is authenticated
+        const isAuthenticatedToken = !!configuration?.user?.id;
+
+        // add to summary log
+        requestLogger.summary.isAuthenticatedToken = isAuthenticatedToken;
 
         //  Get userinfo attributes
         const attributes = await userinfo.fetch({ token });
+
+        console.log("########### attributes", attributes);
+
+        // Check if method and url requires a CPR to be attached to the user
+        const cprRequired = !!whitelist.userinfo.find((obj) => {
+          const url = obj.url.replaceFirst("/agencyid/");
+
+          return obj.method === request.method && obj.url === request.url;
+        });
 
         // If CPR is required we set CPR from userinfo attributes
         // add to summary log
@@ -235,30 +258,64 @@ module.exports = async function (fastify, opts) {
           cpr = attributes.cpr;
         }
 
-        // add to summary log
-        requestLogger.summary.patronIdRequired = patronIdRequired;
-
-        // The smaug configuration, fetched and validated
-        const configuration = await smaug.fetch({
-          token,
-          patronIdRequired,
-        });
-
         // nemlogin provider used
         const isNemlogin = attributes?.idpUsed === "nemlogin";
 
         // Set the FBS authentication method (preauthenticated/autenticate)
         const auth = isNemlogin ? preauthenticated : authenticate;
-        // add to summary log
-        requestLogger.summary.isAuthenticatedToken = !!configuration?.user?.id;
+
+        // extract agencyId from url path, if any given
+        const agencyIdFromUrl = extractAgencyIdFromUrl(request.url);
+
+        // Api path was called with a predefined agencyId
+        const hasUrlAgencyId = !!agencyIdFromUrl;
+
+        // agencyId differs from clientconfiguration
+        const hasAlternativeAgencyId =
+          hasUrlAgencyId && hasUrlAgencyId !== configuration?.agencyId;
 
         // add to summary log
-        requestLogger.summary.agencyId = configuration?.agencyId;
+        requestLogger.summary.hasUrlAgencyId = hasUrlAgencyId;
+        requestLogger.summary.hasAlternativeAgencyId = hasAlternativeAgencyId;
+
+        console.log("############ agencyIdFromUrl", agencyIdFromUrl);
+
+        // Verify that user is allowed to use the agencyId given in url
+        let allowAlternativeAgencyId = false;
+        if (hasAlternativeAgencyId) {
+          if (isAuthenticatedToken) {
+            allowAlternativeAgencyId = attributes.agencies.find(
+              (obj) => obj?.agencyId === agencyIdFromUrl
+            );
+          }
+
+          // add to summary log
+          requestLogger.summary.allowAlternativeAgencyId =
+            allowAlternativeAgencyId;
+
+          // throw a 405 if not allowed
+          if (!allowAlternativeAgencyId) {
+            return reply.code(405).send({ message: "Method Not Allowed" });
+          }
+        }
+
+        // Define used agencyId
+        const agencyId = agencyIdFromUrl || configuration?.agencyId;
+
+        // add to summary log
+        requestLogger.summary.agencyId = agencyId;
         requestLogger.summary.clientId = configuration?.app?.clientId;
+
+        // Get credentials for agencyId
+        const credentials = getCredentials({
+          agencyId,
+          log: requestLogger,
+        });
 
         // We need to login and get a sessionKey in order to call the FBS API
         let sessionKey = await fbsLogin.fetch({
           token,
+          credentials,
           configuration,
         });
 

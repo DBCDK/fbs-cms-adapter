@@ -9,9 +9,15 @@ function init({ redis, log }) {
   /**
    * The actual fetch function
    */
-  async function fetch({ token, configuration, skipCache = false }) {
+  async function fetch({
+    token,
+    credentials,
+    configuration,
+    skipCache = false,
+  }) {
     const time = performance.now();
-    const { agencyid, username, password, url } = configuration.fbs;
+    const { isil: agencyid, username, password } = credentials;
+    const { url } = configuration.fbs;
 
     const fbsCmsUrl = url || process.env.FBS_CMS_API_URL;
 
