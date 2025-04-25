@@ -9,19 +9,14 @@ function init({ redis, log }) {
   /**
    * The actual fetch function
    */
-  async function fetch({
-    token,
-    credentials,
-    configuration,
-    skipCache = false,
-  }) {
+  async function fetch({ token, credentials, skipCache = false }) {
     const time = performance.now();
-    const { isil: agencyid, username, password } = credentials;
-    const { url } = configuration.fbs;
 
-    const fbsCmsUrl = url || process.env.FBS_CMS_API_URL;
+    const { isil, agencyId, fbsUrl, username, password } = credentials;
 
-    const cachedVal = !skipCache && (await redis.get(token));
+    // Redis key according to agencyId
+    const redisKey = agencyId + "-" + token;
+    const cachedVal = !skipCache && (await redis.get(redisKey));
 
     if (cachedVal) {
       return cachedVal;
@@ -40,7 +35,7 @@ function init({ redis, log }) {
     }
 
     const res = await fetcher(
-      `${fbsCmsUrl}/external/v1/${agencyid}/authentication/login`,
+      `${fbsUrl}/external/v1/${isil}/authentication/login`,
       options,
       log
     );
@@ -54,7 +49,7 @@ function init({ redis, log }) {
     const sessionKey = res.body.sessionKey;
 
     if (res.code === 200 && sessionKey) {
-      await redis.set(token, sessionKey);
+      await redis.set(redisKey, sessionKey);
       return sessionKey;
     }
 

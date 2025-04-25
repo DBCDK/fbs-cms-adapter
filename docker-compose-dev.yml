@@ -44,7 +44,9 @@ services:
         000003,
         000004,d4383a9fa7214a6d78a019c1328695a3
         000005,,some-retailerId,
-        ${VALID_FBS_CMS_CREDENTIALS}
+        ${VALID_FBS_CMS_CREDENTIALS},
+        ${VALID_FBS_CMS_CREDENTIALS_2},
+        ${VALID_FBS_CMS_CREDENTIALS_3}
 
       # staging
       # - FBS_CMS_API_URL=https://et.cicero-fbs.com/rest

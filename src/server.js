@@ -18,6 +18,7 @@ const {
   ensureString,
   getCredentials,
   extractAgencyIdFromUrl,
+  extractAgencyPathFromUrl,
 } = require("./utils");
 
 // JSON Schema for validating the request headers
@@ -143,6 +144,14 @@ module.exports = async function (fastify, opts) {
       total_ms: performance.now() - summary.total_ms,
     });
 
+    console.log("############ summary", {
+      status: reply.statusCode,
+      method: request.method,
+      url: request.url,
+      ...summary,
+      total_ms: performance.now() - summary.total_ms,
+    });
+
     done();
   });
 
@@ -232,59 +241,27 @@ module.exports = async function (fastify, opts) {
         //  Get userinfo attributes
         const attributes = await userinfo.fetch({ token });
 
-        console.log("########### attributes", attributes);
-
-        // Check if method and url requires a CPR to be attached to the user
-        const cprRequired = !!whitelist.userinfo.find((obj) => {
-          const url = obj.url.replaceFirst("/agencyid/");
-
-          return obj.method === request.method && obj.url === request.url;
-        });
-
-        // If CPR is required we set CPR from userinfo attributes
-        // add to summary log
-        requestLogger.summary.cprRequired = cprRequired;
-
-        // if allowed, retrieve cpr from token
-        let cpr = null;
-        if (cprRequired) {
-          // ensure user is nemid validated (has cpr attribute) -> throws if not
-          validateUserinfoCPR({
-            attributes,
-            log: requestLogger,
-            token,
-          });
-
-          cpr = attributes.cpr;
-        }
-
-        // nemlogin provider used
-        const isNemlogin = attributes?.idpUsed === "nemlogin";
-
-        // Set the FBS authentication method (preauthenticated/autenticate)
-        const auth = isNemlogin ? preauthenticated : authenticate;
-
-        // extract agencyId from url path, if any given
+        // extract agencyId from url path, if any given (isil prefix will be removed)
         const agencyIdFromUrl = extractAgencyIdFromUrl(request.url);
+
+        console.log("############ agencyIdFromUrl", agencyIdFromUrl);
 
         // Api path was called with a predefined agencyId
         const hasUrlAgencyId = !!agencyIdFromUrl;
 
-        // agencyId differs from clientconfiguration
+        // url agencyId differs from clientconfiguration
         const hasAlternativeAgencyId =
-          hasUrlAgencyId && hasUrlAgencyId !== configuration?.agencyId;
+          hasUrlAgencyId && agencyIdFromUrl !== configuration?.agencyId;
 
         // add to summary log
         requestLogger.summary.hasUrlAgencyId = hasUrlAgencyId;
         requestLogger.summary.hasAlternativeAgencyId = hasAlternativeAgencyId;
 
-        console.log("############ agencyIdFromUrl", agencyIdFromUrl);
-
         // Verify that user is allowed to use the agencyId given in url
-        let allowAlternativeAgencyId = false;
         if (hasAlternativeAgencyId) {
+          let allowAlternativeAgencyId = false;
           if (isAuthenticatedToken) {
-            allowAlternativeAgencyId = attributes.agencies.find(
+            allowAlternativeAgencyId = !!attributes.agencies.find(
               (obj) => obj?.agencyId === agencyIdFromUrl
             );
           }
@@ -316,8 +293,34 @@ module.exports = async function (fastify, opts) {
         let sessionKey = await fbsLogin.fetch({
           token,
           credentials,
-          configuration,
         });
+
+        const subPath = extractAgencyPathFromUrl(request.url);
+
+        // Check if method and url requires a CPR to be attached to the user
+        const cprRequired = !!whitelist.userinfo.find((obj) => {
+          // Replace agencyid placeholder with the real from the request url
+          const url = obj.url.replace("/agencyid/", `/${subPath}/`);
+          return obj.method === request.method && url === request.url;
+        });
+
+        // If CPR is required we set CPR from userinfo attributes
+        // add to summary log
+        requestLogger.summary.cprRequired = cprRequired;
+
+        // if allowed, retrieve cpr from token
+        let cpr = null;
+        if (cprRequired) {
+          // ensure user is nemid validated (has cpr attribute) -> throws if not
+          validateUserinfoCPR({ attributes, log: requestLogger, token });
+          cpr = attributes.cpr;
+        }
+
+        // nemlogin provider used
+        const isNemlogin = attributes?.idpUsed === "nemlogin";
+
+        // Set the FBS authentication method (preauthenticated/autenticate)
+        const auth = isNemlogin ? preauthenticated : authenticate;
 
         // add to summary log
         requestLogger.summary.hasSessionKey = !!sessionKey;
@@ -333,7 +336,7 @@ module.exports = async function (fastify, opts) {
             patronId = await auth.fetch({
               token,
               sessionKey,
-              configuration,
+              credentials,
               attributes,
             });
           }
@@ -344,7 +347,7 @@ module.exports = async function (fastify, opts) {
           proxyResponse = await proxy.fetch({
             sessionKey,
             patronId,
-            configuration,
+            credentials,
             cpr,
           });
         } catch (e) {
@@ -353,7 +356,7 @@ module.exports = async function (fastify, opts) {
             // This means sessionKey is expired and we have to login again
             sessionKey = await fbsLogin.fetch({
               token,
-              configuration,
+              credentials,
               skipCache: true,
             });
 
@@ -364,7 +367,7 @@ module.exports = async function (fastify, opts) {
               patronId = await auth.fetch({
                 token,
                 sessionKey,
-                configuration,
+                credentials,
                 attributes,
                 skipCache: true,
               });
@@ -372,7 +375,7 @@ module.exports = async function (fastify, opts) {
             proxyResponse = await proxy.fetch({
               sessionKey,
               patronId,
-              configuration,
+              credentials,
               cpr,
             });
           } else {

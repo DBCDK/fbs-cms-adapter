@@ -20,6 +20,15 @@ services:
       - FBS_CMS_API_URL=http://http_mock:3000/fbscms
       - REDIS_HOST=redis
       - USERINFO_URL=http://http_mock:3000/userinfo
+
+      - |
+        FBS_CMS_CREDENTIALS=
+        000001,some-username,some-password,
+        000002,some-username,some-password,some-url,
+        000003,
+        000004,some-username,
+        000005,,some-password,
+        
     depends_on:
       - http_mock
       - redis

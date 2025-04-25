@@ -75,6 +75,7 @@ function parseCredentials(str = "") {
       isil: `DK-${arr[0]}`,
       username: arr[1],
       password: arr[2],
+      fbsUrl: arr[3] || process.env.FBS_CMS_API_URL,
     };
   });
   return map;
@@ -83,8 +84,6 @@ function parseCredentials(str = "") {
 const credentialsList = parseCredentials(process.env.FBS_CMS_CREDENTIALS);
 
 function getCredentials({ agencyId, log }) {
-  console.log("credentialsList", credentialsList);
-
   const credentials = credentialsList?.[agencyId];
 
   if (!credentials?.username || !credentials?.password) {
@@ -100,18 +99,39 @@ function getCredentials({ agencyId, log }) {
   return credentials;
 }
 
-function extractAgencyIdFromUrl(url = "") {
+/**
+ * Returns the raw value in the `/agencyid/` position of the URL,
+ * including values like "agencyid", "DK-123456", or "123456".
+ */
+function extractAgencyPathFromUrl(url = "") {
   const parts = url.split("/");
-  const v1Index = parts.findIndex((part) => part === "v1");
+  const externalIndex = parts.findIndex((part) => part === "external");
 
-  if (v1Index !== -1 && parts.length > v1Index + 1) {
-    const agencyId = parts[v1Index + 1];
-    // Returnér null hvis agencyId bare er strengen "agencyid"
-    if (agencyId.toLowerCase() === "agencyid") return null;
-    return agencyId;
+  if (externalIndex !== -1 && parts.length > externalIndex + 1) {
+    let index = externalIndex + 1;
+
+    // If next part is a version like v1, v2, v10, skip it
+    if (/^v\d+$/i.test(parts[index])) {
+      index++;
+    }
+
+    if (parts.length > index) {
+      return parts[index]; // Return the value in the agencyid position
+    }
   }
 
   return null;
+}
+
+/**
+ * Returns a cleaned agencyId (e.g. "123456") from the URL,
+ * or null if it's just a placeholder like "agencyid".
+ */
+function extractAgencyIdFromUrl(url = "") {
+  const raw = extractAgencyPathFromUrl(url);
+  if (!raw || raw.toLowerCase() === "agencyid") return null;
+
+  return raw.replace(/^dk-/i, "");
 }
 
 /**
@@ -129,6 +149,7 @@ module.exports = {
   fetcher,
   nanoToMs,
   extractAgencyIdFromUrl,
+  extractAgencyPathFromUrl,
   getCredentials,
   ensureString,
 };
