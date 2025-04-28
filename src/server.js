@@ -144,14 +144,6 @@ module.exports = async function (fastify, opts) {
       total_ms: performance.now() - summary.total_ms,
     });
 
-    console.log("############ summary", {
-      status: reply.statusCode,
-      method: request.method,
-      url: request.url,
-      ...summary,
-      total_ms: performance.now() - summary.total_ms,
-    });
-
     done();
   });
 
@@ -243,8 +235,6 @@ module.exports = async function (fastify, opts) {
 
         // extract agencyId from url path, if any given (isil prefix will be removed)
         const agencyIdFromUrl = extractAgencyIdFromUrl(request.url);
-
-        console.log("############ agencyIdFromUrl", agencyIdFromUrl);
 
         // Api path was called with a predefined agencyId
         const hasUrlAgencyId = !!agencyIdFromUrl;

@@ -909,6 +909,277 @@ describe("Testing the FBS CMS adapter", () => {
       });
     });
   });
+
+  describe("Dynamic use of agencyId in path", () => {
+    it("should accept 'agencyid' in path", () => {
+      const token = "TOKEN";
+      const agencyId = "some-agencyid";
+
+      // Setup mocks
+      mockSmaug({
+        token,
+        status: 200,
+        body: {
+          user: validSmaugUser,
+          agencyId,
+        },
+      });
+
+      mockFetchUserinfoAuthenticatedTokenSucces();
+
+      mockFetchFbsSessionKeySucces();
+      mockFetchFbsCmsAnonymousPathSucces();
+
+      // Send request to adapter
+      cy.request({
+        url: "/external/agencyid/some/path",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        failOnStatusCode: false,
+      }).then((res) => {
+        expect(res.status).to.eq(200);
+        expect(res.body).to.deep.include({
+          message: "from FBS CMS API",
+        });
+      });
+    });
+
+    it("should accept same origin agencyid in path", () => {
+      const token = "TOKEN";
+      const agencyId = "some-agencyid";
+
+      // Setup mocks
+      mockSmaug({
+        token,
+        status: 200,
+        body: {
+          user: validSmaugUser,
+          agencyId,
+        },
+      });
+
+      mockFetchUserinfoAuthenticatedTokenSucces();
+
+      mockFetchFbsSessionKeySucces();
+      mockFetchFbsCmsAnonymousPathSucces();
+
+      // Send request to adapter
+      cy.request({
+        url: `/external/${agencyId}/some/path`,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        failOnStatusCode: false,
+      }).then((res) => {
+        expect(res.status).to.eq(200);
+        expect(res.body).to.deep.include({
+          message: "from FBS CMS API",
+        });
+      });
+    });
+
+    it("should accept same origin isil in path", () => {
+      const token = "TOKEN";
+      const agencyId = "some-agencyid";
+      const isil = `DK-${agencyId}`;
+
+      // Setup mocks
+      mockSmaug({
+        token,
+        status: 200,
+        body: {
+          user: validSmaugUser,
+          agencyId,
+        },
+      });
+
+      mockFetchUserinfoAuthenticatedTokenSucces();
+
+      mockFetchFbsSessionKeySucces();
+      mockFetchFbsCmsAnonymousPathSucces();
+
+      // Send request to adapter
+      cy.request({
+        url: `/external/${isil}/some/path`,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        failOnStatusCode: false,
+      }).then((res) => {
+        expect(res.status).to.eq(200);
+        expect(res.body).to.deep.include({
+          message: "from FBS CMS API",
+        });
+      });
+    });
+
+    it("should accept when an alternative agencyId is included in the user's list of agencies", () => {
+      const token = "TOKEN";
+      const agencyId = "some-agencyid";
+      const alternativeAgencyId = `some-other-agencyid`;
+
+      // rediskey is now based on the url provided agencyid
+      const redisKey = `${alternativeAgencyId}-${token}`;
+
+      // Setup mocks
+      mockFetchUserinfoAuthenticatedTokenSucces();
+
+      mockSmaug({
+        token,
+        status: 200,
+        body: {
+          user: validSmaugUser,
+          agencyId,
+        },
+      });
+
+      mockFetchFbsSessionKeySucces(undefined, alternativeAgencyId);
+      mockFetchFbsPatronIdSuccesInstitution(undefined, alternativeAgencyId);
+      mockFetchFbsCmsAuthenticatedPathSucces(undefined, alternativeAgencyId);
+
+      mockFetchFbsPatronIdSucces(undefined, alternativeAgencyId);
+
+      // Send request to adapter
+      cy.request({
+        url: `/external/${alternativeAgencyId}/patrons/patronid/some/path`,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        failOnStatusCode: false,
+      }).then((res) => {
+        expect(res.status).to.eq(200);
+        expect(res.body).to.deep.include({
+          message: "hello patron",
+        });
+      });
+
+      // Redis should have updated values
+      redisGet({ key: redisKey, namespace: "sessionkey" }).then((value) => {
+        expect(value).to.equal("SOME_VALID_SESSION_KEY");
+      });
+      redisGet({ key: redisKey, namespace: "patronid" }).then((value) => {
+        expect(value).to.equal("1234");
+      });
+    });
+
+    it("should use /authenticate path for borchk validated users", () => {
+      /**
+       * Expected flow:
+       * 1. Adapter uses token to fetch smaug configuration containing both user and fbs credentials
+       * 2. smaug configuration is succesfully validated
+       * 3. sessionKey is fetched from Fbs using FBS credentials from smaug configuration
+       * 4. patronId is fetched from FBS using sessionKey
+       * 5. The url is replaced with values for agencyId and patronId
+       * 6. The request is then forwarded to Fbs CMS with succes
+       */
+
+      const token = "TOKEN_WITH_NO_CPR";
+      const agencyId = "some-agencyid";
+      const redisKey = `${agencyId}-${token}`;
+
+      // Setup mocks
+      mockFetchUserinfoAuthenticatedTokenNoCPR();
+      mockSmaug({
+        token,
+        status: 200,
+        body: {
+          user: validSmaugUser,
+          agencyId,
+        },
+      });
+      mockFetchFbsSessionKeySucces();
+      mockFetchFbsPatronIdSuccesInstitution();
+      mockFetchFbsCmsAuthenticatedPathSucces();
+
+      // Send request to adapter
+      cy.request({
+        url: "/external/agencyid/patrons/patronid/some/path",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        failOnStatusCode: false,
+      }).then((res) => {
+        expect(res.status).to.eq(200);
+        expect(res.body).to.deep.include({
+          message: "hello patron",
+        });
+      });
+
+      // Redis should have updated values
+      redisGet({ key: redisKey, namespace: "sessionkey" }).then((value) => {
+        expect(value).to.equal("SOME_VALID_SESSION_KEY");
+      });
+      redisGet({ key: redisKey, namespace: "patronid" }).then((value) => {
+        expect(value).to.equal("1234");
+      });
+    });
+
+    it("should fail when an alternative agencyId is not included in the user's list of agencies", () => {
+      const token = "TOKEN";
+      const agencyId = "some-agencyid";
+      const alternativeAgencyId = `some-random-agencyid`;
+
+      // Setup mocks
+      mockSmaug({
+        token,
+        status: 200,
+        body: {
+          user: validSmaugUser,
+          agencyId,
+        },
+      });
+
+      mockFetchUserinfoAuthenticatedTokenSucces();
+
+      // Send request to adapter
+      cy.request({
+        url: `/external/${alternativeAgencyId}/some/path`,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        failOnStatusCode: false,
+      }).then((res) => {
+        expect(res.status).to.eq(405);
+        expect(res.body).to.deep.include({
+          message: "Method Not Allowed",
+        });
+      });
+    });
+
+    it("should fail if alternative isil is given for anonymous token", () => {
+      const token = "ANONYMOUS_TOKEN";
+      const agencyId = "some-agencyid";
+      const alternativeAgencyId = `some-random-agencyid`;
+
+      // Setup mocks
+      mockSmaug({
+        token,
+        status: 200,
+        body: {
+          agencyId,
+        },
+      });
+
+      mockFetchUserinfoAnonymousTokenSuccess();
+      mockFetchFbsSessionKeySucces();
+      mockFetchFbsCmsAnonymousPathSucces();
+
+      // Send request to adapter
+      cy.request({
+        url: `/external/${alternativeAgencyId}/some/path`,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        failOnStatusCode: false,
+      }).then((res) => {
+        expect(res.status).to.eq(405);
+        expect(res.body).to.deep.include({
+          message: "Method Not Allowed",
+        });
+      });
+    });
+  });
 });
 
 // ----- HELPER FUNCTIONS FOR MOCKING STUFF -----
@@ -1154,6 +1425,7 @@ function mockFetchUserinfoAuthenticatedTokenSucces(token = "TOKEN") {
           userId: "some-userId",
           pincode: "some-pincode",
           idpUsed: "nemlogin",
+          agencies: [{ agencyId: "some-other-agencyid" }],
         },
       },
     },
@@ -1177,6 +1449,30 @@ function mockFetchUserinfoAuthenticatedTokenNoCPR() {
           userId: "some-userId",
           pincode: "some-pincode",
           idpUsed: "borchk",
+          agencies: [{ agencyId: "some-other-agencyid" }],
+        },
+      },
+    },
+  });
+}
+
+function mockFetchUserinfoAnonymousTokenSuccess() {
+  mockHTTP({
+    request: {
+      method: "GET",
+      path: `/userinfo`,
+      headers: {
+        authorization: "Bearer ANONYMOUS_TOKEN",
+      },
+    },
+    response: {
+      status: 200,
+      body: {
+        attributes: {
+          cpr: null,
+          userId: "@",
+          pincode: "@",
+          agencies: [],
         },
       },
     },

@@ -75,12 +75,12 @@ For the most of the time the adapter will pass raw responses from the FBS CMS AP
 ## Setting up the dev environment
 
 Use docker-compose to start the dev server on port 3000.
-`docker-compose -f docker-compose-dev.yml up`
+`docker compose -f docker-compose-dev.yml up`
 This will start a service for mocking HTTP, a Redis and the adapter. The adapter and mock service are restarted automatically when files change in the src folder.
 
 NOTICE:
 If any changes are made in eg. package.json you need to make sure that local images are rebuild - one way is to remove them by running
-`docker-compose -f docker-compose-dev.yml down --rmi all`
+`docker compose -f docker-compose-dev.yml down --rmi all`
 
 When the dev environment is started, run tests with `npm run cy:open`.
 

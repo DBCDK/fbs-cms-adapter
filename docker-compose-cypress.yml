@@ -23,6 +23,9 @@ services:
 
       - |
         FBS_CMS_CREDENTIALS=
+        some-agencyid,some-username,some-password,
+        some-other-agencyid,some-username,some-password,
+        some-random-agencyid,some-username,some-password,
         000001,some-username,some-password,
         000002,some-username,some-password,http://http_mock:3000/some-url,
         000003,
