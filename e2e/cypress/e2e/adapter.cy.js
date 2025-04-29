@@ -18,6 +18,18 @@ const validSmaugFbsCredentials = {
   password: "some-password",
 };
 
+const ownAgency = {
+  allowedAgencies: "own",
+};
+
+const userAgencies = {
+  allowedAgencies: "user",
+};
+
+const allAgencies = {
+  allowedAgencies: "all",
+};
+
 describe("Testing the FBS CMS adapter", () => {
   beforeEach(() => {
     resetMockHTTP();
@@ -77,6 +89,7 @@ describe("Testing the FBS CMS adapter", () => {
         token: "TOKEN_WITHOUT_FBS_CREDENTIALS",
         status: 200,
         body: {
+          fbs: ownAgency,
           user: validSmaugUser,
           agencyId: "000003",
         },
@@ -86,6 +99,7 @@ describe("Testing the FBS CMS adapter", () => {
         token: "TOKEN_WITHOUT_AGENCYID",
         status: 200,
         body: {
+          fbs: ownAgency,
           user: validSmaugUser,
         },
       });
@@ -93,6 +107,7 @@ describe("Testing the FBS CMS adapter", () => {
         token: "TOKEN_WITHOUT_FBS_USERNAME",
         status: 200,
         body: {
+          fbs: ownAgency,
           user: validSmaugUser,
           agencyId: "000005",
         },
@@ -101,6 +116,7 @@ describe("Testing the FBS CMS adapter", () => {
         token: "TOKEN_WITHOUT_FBS_PASSWORD",
         status: 200,
         body: {
+          fbs: ownAgency,
           user: validSmaugUser,
           agencyId: "000004",
         },
@@ -175,6 +191,40 @@ describe("Testing the FBS CMS adapter", () => {
     });
   });
 
+  context("Access validation", () => {
+    it("returns error when client has no fbs access", () => {
+      /**
+       * Expected flow:
+       * 1. Request is invalid due to missing configuration
+       */
+
+      const token = "TOKEN";
+      const agencyId = "some-agencyid";
+
+      mockSmaug({
+        token: "TOKEN",
+        status: 200,
+        body: {
+          agencyId,
+        },
+      });
+
+      // Send request to adapter
+      cy.request({
+        url: "/external/agencyid/some/path",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        failOnStatusCode: false,
+      }).then((res) => {
+        expect(res.status).to.eq(403);
+        expect(res.body).to.deep.include({
+          message: "Forbidden",
+        });
+      });
+    });
+  });
+
   context("Access anonymous path", () => {
     it("returns fbs cms response, when token has valid FBS credentials", () => {
       /**
@@ -197,6 +247,7 @@ describe("Testing the FBS CMS adapter", () => {
         token: "TOKEN",
         status: 200,
         body: {
+          fbs: ownAgency,
           agencyId,
         },
       });
@@ -244,6 +295,7 @@ describe("Testing the FBS CMS adapter", () => {
         token,
         status: 200,
         body: {
+          fbs: ownAgency,
           agencyId,
         },
       });
@@ -289,7 +341,7 @@ describe("Testing the FBS CMS adapter", () => {
       // Setup mocks
       mockFetchUserinfoAuthenticatedTokenSucces();
 
-      mockSmaug({ token, status: 200, body: { agencyId } });
+      mockSmaug({ token, status: 200, body: { fbs: ownAgency, agencyId } });
 
       redisSet({
         key: redisKey,
@@ -335,6 +387,7 @@ describe("Testing the FBS CMS adapter", () => {
         token,
         status: 200,
         body: {
+          fbs: ownAgency,
           agencyId,
         },
       });
@@ -385,6 +438,7 @@ describe("Testing the FBS CMS adapter", () => {
         token,
         status: 200,
         body: {
+          fbs: ownAgency,
           agencyId,
         },
       });
@@ -425,6 +479,7 @@ describe("Testing the FBS CMS adapter", () => {
         token,
         status: 200,
         body: {
+          fbs: ownAgency,
           user: validSmaugUser,
           agencyId,
         },
@@ -480,6 +535,7 @@ describe("Testing the FBS CMS adapter", () => {
         token: "TOKEN",
         status: 200,
         body: {
+          fbs: ownAgency,
           user: validSmaugUser,
           agencyId,
         },
@@ -531,6 +587,7 @@ describe("Testing the FBS CMS adapter", () => {
         token: "TOKEN",
         status: 200,
         body: {
+          fbs: ownAgency,
           user: validSmaugUser,
           agencyId,
         },
@@ -581,6 +638,7 @@ describe("Testing the FBS CMS adapter", () => {
         token,
         status: 200,
         body: {
+          fbs: ownAgency,
           user: validSmaugUser,
           agencyId,
         },
@@ -642,6 +700,7 @@ describe("Testing the FBS CMS adapter", () => {
         token,
         status: 200,
         body: {
+          fbs: ownAgency,
           user: validSmaugUser,
           agencyId,
         },
@@ -698,6 +757,7 @@ describe("Testing the FBS CMS adapter", () => {
         token,
         status: 200,
         body: {
+          fbs: ownAgency,
           user: validSmaugUser,
           agencyId,
         },
@@ -740,6 +800,7 @@ describe("Testing the FBS CMS adapter", () => {
         token,
         status: 200,
         body: {
+          fbs: ownAgency,
           user: validSmaugUser,
           agencyId,
         },
@@ -786,6 +847,7 @@ describe("Testing the FBS CMS adapter", () => {
         token,
         status: 200,
         body: {
+          fbs: ownAgency,
           user: validSmaugUser,
           agencyId,
         },
@@ -831,6 +893,7 @@ describe("Testing the FBS CMS adapter", () => {
         token,
         status: 200,
         body: {
+          fbs: ownAgency,
           user: validSmaugUser,
           agencyId,
         },
@@ -878,6 +941,7 @@ describe("Testing the FBS CMS adapter", () => {
         token,
         status: 200,
         body: {
+          fbs: ownAgency,
           user: validSmaugUser,
           agencyId,
         },
@@ -920,6 +984,7 @@ describe("Testing the FBS CMS adapter", () => {
         token,
         status: 200,
         body: {
+          fbs: ownAgency,
           user: validSmaugUser,
           agencyId,
         },
@@ -954,6 +1019,7 @@ describe("Testing the FBS CMS adapter", () => {
         token,
         status: 200,
         body: {
+          fbs: ownAgency,
           user: validSmaugUser,
           agencyId,
         },
@@ -989,6 +1055,7 @@ describe("Testing the FBS CMS adapter", () => {
         token,
         status: 200,
         body: {
+          fbs: ownAgency,
           user: validSmaugUser,
           agencyId,
         },
@@ -1014,6 +1081,95 @@ describe("Testing the FBS CMS adapter", () => {
       });
     });
 
+    it("should fail when an alternative agencyId is given in the url, but client only accepts 'own'", () => {
+      const token = "TOKEN";
+      const agencyId = "some-agencyid";
+      const alternativeAgencyId = `some-other-agencyid`;
+
+      // Setup mocks
+      mockFetchUserinfoAuthenticatedTokenSucces();
+
+      mockSmaug({
+        token,
+        status: 200,
+        body: {
+          fbs: ownAgency,
+          user: validSmaugUser,
+          agencyId,
+        },
+      });
+
+      mockFetchFbsSessionKeySucces(undefined, alternativeAgencyId);
+      mockFetchFbsPatronIdSuccesInstitution(undefined, alternativeAgencyId);
+      mockFetchFbsCmsAuthenticatedPathSucces(undefined, alternativeAgencyId);
+
+      mockFetchFbsPatronIdSucces(undefined, alternativeAgencyId);
+
+      // Send request to adapter
+      cy.request({
+        url: `/external/${alternativeAgencyId}/patrons/patronid/some/path`,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        failOnStatusCode: false,
+      }).then((res) => {
+        expect(res.status).to.eq(405);
+        expect(res.body).to.deep.include({
+          message: "Method Not Allowed",
+        });
+      });
+    });
+
+    it("should accept when an alternative agencyId is given for a client which accepts 'all'", () => {
+      const token = "TOKEN";
+      const agencyId = "some-agencyid";
+      const alternativeAgencyId = `some-random-agencyid`;
+
+      // rediskey is now based on the url provided agencyid
+      const redisKey = `${alternativeAgencyId}-${token}`;
+
+      // Setup mocks
+      mockFetchUserinfoAuthenticatedTokenSucces();
+
+      mockSmaug({
+        token,
+        status: 200,
+        body: {
+          fbs: allAgencies,
+          user: validSmaugUser,
+          agencyId,
+        },
+      });
+
+      mockFetchFbsSessionKeySucces(undefined, alternativeAgencyId);
+      mockFetchFbsPatronIdSuccesInstitution(undefined, alternativeAgencyId);
+      mockFetchFbsCmsAuthenticatedPathSucces(undefined, alternativeAgencyId);
+
+      mockFetchFbsPatronIdSucces(undefined, alternativeAgencyId);
+
+      // Send request to adapter
+      cy.request({
+        url: `/external/${alternativeAgencyId}/patrons/patronid/some/path`,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        failOnStatusCode: false,
+      }).then((res) => {
+        expect(res.status).to.eq(200);
+        expect(res.body).to.deep.include({
+          message: "hello patron",
+        });
+      });
+
+      // Redis should have updated values
+      redisGet({ key: redisKey, namespace: "sessionkey" }).then((value) => {
+        expect(value).to.equal("SOME_VALID_SESSION_KEY");
+      });
+      redisGet({ key: redisKey, namespace: "patronid" }).then((value) => {
+        expect(value).to.equal("1234");
+      });
+    });
+
     it("should accept when an alternative agencyId is included in the user's list of agencies", () => {
       const token = "TOKEN";
       const agencyId = "some-agencyid";
@@ -1029,6 +1185,7 @@ describe("Testing the FBS CMS adapter", () => {
         token,
         status: 200,
         body: {
+          fbs: userAgencies,
           user: validSmaugUser,
           agencyId,
         },
@@ -1084,6 +1241,7 @@ describe("Testing the FBS CMS adapter", () => {
         token,
         status: 200,
         body: {
+          fbs: ownAgency,
           user: validSmaugUser,
           agencyId,
         },
@@ -1125,6 +1283,7 @@ describe("Testing the FBS CMS adapter", () => {
         token,
         status: 200,
         body: {
+          fbs: ownAgency,
           user: validSmaugUser,
           agencyId,
         },
@@ -1157,6 +1316,7 @@ describe("Testing the FBS CMS adapter", () => {
         token,
         status: 200,
         body: {
+          fbs: ownAgency,
           agencyId,
         },
       });

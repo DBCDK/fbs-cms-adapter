@@ -104,7 +104,7 @@ module.exports = async function (fastify, opts) {
         headers: request.headers,
         hostname: request.hostname,
         remoteAddress: request.ip,
-        remotePort: request.connection.remotePort,
+        remotePort: request.socket?.remotePort,
       },
     });
 
@@ -224,11 +224,41 @@ module.exports = async function (fastify, opts) {
           patronIdRequired,
         });
 
+        console.log("configuration", configuration);
+
         // Check if token is authenticated
         const isAuthenticatedToken = !!configuration?.user?.id;
 
         // add to summary log
         requestLogger.summary.isAuthenticatedToken = isAuthenticatedToken;
+
+        // Verifies that the client is allowed to call the API
+
+        const allowedAgencies = configuration.fbs?.allowedAgencies;
+
+        // Check if client is allowed to access all given agencies
+        const allowAllAgencies = allowedAgencies === "all";
+
+        // Check if client is allowed to access all given agencies
+        const allowUserAgencies = allowedAgencies === "user";
+
+        // Check if client is allowed to access own agency
+        const allowOwnAgency = allowedAgencies === "own";
+
+        // Check if client is allowed access to the API
+        const hasAccess =
+          allowAllAgencies || allowUserAgencies || allowOwnAgency;
+
+        // add to summary log
+        requestLogger.summary.hasAccess = hasAccess;
+
+        // add to summary log
+        requestLogger.summary.allowedAgencies = allowedAgencies;
+
+        if (!hasAccess) {
+          // Client is not allowed to access the API
+          return reply.code(403).send({ message: "Forbidden" });
+        }
 
         //  Get userinfo attributes
         const attributes = await userinfo.fetch({ token });
@@ -249,20 +279,29 @@ module.exports = async function (fastify, opts) {
 
         // Verify that user is allowed to use the agencyId given in url
         if (hasAlternativeAgencyId) {
-          let allowAlternativeAgencyId = false;
-          if (isAuthenticatedToken) {
-            allowAlternativeAgencyId = !!attributes.agencies.find(
-              (obj) => obj?.agencyId === agencyIdFromUrl
-            );
-          }
+          // if client is allowed to use all agencies, we skip this check
+          if (!allowAllAgencies) {
+            // if client is allowed to access the api among users agencies
 
-          // add to summary log
-          requestLogger.summary.allowAlternativeAgencyId =
-            allowAlternativeAgencyId;
+            let allowAlternativeAgencyId = false;
 
-          // throw a 405 if not allowed
-          if (!allowAlternativeAgencyId) {
-            return reply.code(405).send({ message: "Method Not Allowed" });
+            if (allowUserAgencies) {
+              // check if user is allowed to use the agencyId given in url
+              if (isAuthenticatedToken) {
+                allowAlternativeAgencyId = !!attributes.agencies.find(
+                  (obj) => obj?.agencyId === agencyIdFromUrl
+                );
+              }
+
+              // add to summary log
+              requestLogger.summary.allowAlternativeAgencyId =
+                allowAlternativeAgencyId;
+            }
+
+            // throw a 405 if not allowed
+            if (!allowAlternativeAgencyId) {
+              return reply.code(405).send({ message: "Method Not Allowed" });
+            }
           }
         }
 
