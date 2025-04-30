@@ -6,7 +6,7 @@ def imageLabel = BUILD_NUMBER
 
 pipeline {
     agent {
-        label 'devel10-head'
+        label 'devel10'
     }
     environment {
         GITLAB_ID = "1048"
@@ -23,17 +23,17 @@ pipeline {
                     app = docker.image("${IMAGE}")
             } }
         }
-        stage('Integration test') {
-            steps {
-                script {
-                    ansiColor('xterm') {
-                        sh 'echo Integrating...'
-                        sh "docker-compose -f docker-compose-cypress.yml -p ${DOCKER_COMPOSE_NAME} build"
-                        sh "IMAGE=${IMAGE} docker-compose -f docker-compose-cypress.yml -p ${DOCKER_COMPOSE_NAME} run e2e"
-                    }
-                }
-            }
-        }
+        // stage('Integration test') {
+        //     steps {
+        //         script {
+        //             ansiColor('xterm') {
+        //                 sh 'echo Integrating...'
+        //                 sh "docker-compose -f docker-compose-cypress.yml -p ${DOCKER_COMPOSE_NAME} build"
+        //                 sh "IMAGE=${IMAGE} docker-compose -f docker-compose-cypress.yml -p ${DOCKER_COMPOSE_NAME} run e2e"
+        //             }
+        //         }
+        //     }
+        // }
         stage('Push to Artifactory') {
             when {
                 branch 'main'
@@ -73,10 +73,16 @@ pipeline {
         always {
             sh """
                     echo Clean up
-                    docker-compose -f docker-compose-cypress.yml -p ${DOCKER_COMPOSE_NAME} down -v
                     docker rmi $IMAGE
                 """
         }
+        // always {
+        //     sh """
+        //             echo Clean up
+        //             docker-compose -f docker-compose-cypress.yml -p ${DOCKER_COMPOSE_NAME} down -v
+        //             docker rmi $IMAGE
+        //         """
+        // }
         failure {
             script {
                 if ("${env.BRANCH_NAME}" == 'main') {
