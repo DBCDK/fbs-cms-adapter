@@ -6,7 +6,7 @@ def imageLabel = BUILD_NUMBER
 
 pipeline {
     agent {
-        label 'devel10-head'
+        label 'devel11'
     }
     environment {
         GITLAB_ID = "1048"
