@@ -1,7 +1,7 @@
 const HttpsProxyAgent = require("https-proxy-agent");
 const merge = require("lodash/merge");
 
-const { fetcher } = require("../utils");
+const { fetcher, getCredentials } = require("../utils");
 
 function attachCpr({ method, url, cpr }) {
   // on POST to withGuardian url, cpr is attached to a deeper level body.guardian
@@ -38,10 +38,17 @@ function attachCpr({ method, url, cpr }) {
   return { personIdentifier: cpr };
 }
 
-function replacePath({ url, agencyid, patronId }) {
-  return url
-    .replace("/agencyid/", `/${agencyid}/`)
-    .replace("/patronid/", `/${patronId}/`);
+function replacePath({ url, agencyId, isil, patronId }) {
+  // Replaces url path params
+  return (
+    url
+      // replace real alternative agencyId with isil (DK-xxxxxx)
+      .replace(`/${agencyId}/`, `/${isil}/`)
+      // replace agencyId placeholder with isil (DK-xxxxxx)
+      .replace("/agencyid/", `/${isil}/`)
+      // replace patronid placeholder with real patronId
+      .replace("/patronid/", `/${patronId}/`)
+  );
 }
 
 /**
@@ -51,10 +58,10 @@ function init({ url, method, headers, body, log }) {
   /**
    * The actual fetch function
    */
-  async function fetch({ sessionKey, configuration, patronId, cpr }) {
+  async function fetch({ sessionKey, credentials, patronId, cpr }) {
     const time = performance.now();
-    const agencyid = configuration.fbs.agencyid;
-    const fbsCmsUrl = configuration.fbs.url || process.env.FBS_CMS_API_URL;
+
+    const { isil, agencyId, fbsUrl } = credentials;
 
     const options = {
       method: method,
@@ -84,7 +91,7 @@ function init({ url, method, headers, body, log }) {
     }
 
     let res = await fetcher(
-      fbsCmsUrl + replacePath({ url, agencyid, patronId }),
+      fbsUrl + replacePath({ url, agencyId, isil, patronId }),
       options,
       log
     );

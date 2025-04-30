@@ -22,20 +22,37 @@ services:
       - REDIS_HOST=redis
       
       # local
-      # - FASTIFY_LOG_LEVEL=silent
-      # - FASTIFY_PRETTY_LOGS=false
-      # - SMAUG_URL=http://http_mock:3000/smaug/configuration
-      # - FBS_CMS_API_URL=http://http_mock:3000/fbscms
-      # - USERINFO_URL=http://http_mock:3000/userinfo     
+      - FASTIFY_LOG_LEVEL=silent
+      - FASTIFY_PRETTY_LOGS=false
+      - SMAUG_URL=http://http_mock:3000/smaug/configuration
+      - FBS_CMS_API_URL=http://http_mock:3000/fbscms
+      - USERINFO_URL=http://http_mock:3000/userinfo
+
+      - |
+        FBS_CMS_CREDENTIALS=
+        some-agencyid,some-username,some-password,
+        some-other-agencyid,some-username,some-password,
+        some-random-agencyid,some-username,some-password,
+        000001,some-username,some-password,
+        000002,some-username,some-password,http://http_mock:3000/some-url,
+        000003,
+        000004,some-username,
+        000005,,some-password, 
 
       # prod
-      - FASTIFY_LOG_LEVEL=debug
-      - FASTIFY_PRETTY_LOGS=true
-      - SMAUG_URL=https://auth-config.dbc.dk/configuration
-      - FBS_CMS_API_URL=https://cicero-fbs.com/rest
-      - USERINFO_URL=https://login.bib.dk/userinfo
-      - HTTPS_PROXY=http://dmzproxy.dbc.dk:3128
-      - REDIS_CLUSTER_HOST=frontend-fbscmsadapter-staging-redis-cluster.platform-redis.svc.cloud.dbc.dk
+      # - FASTIFY_LOG_LEVEL=debug
+      # - FASTIFY_PRETTY_LOGS=true
+      # - SMAUG_URL=https://auth-config.dbc.dk/configuration
+      # - FBS_CMS_API_URL=https://cicero-fbs.com/rest
+      # - USERINFO_URL=https://login.bib.dk/userinfo
+      # - HTTPS_PROXY=http://dmzproxy.dbc.dk:3128
+      # - REDIS_CLUSTER_HOST=frontend-fbscmsadapter-staging-redis-cluster.platform-redis.svc.cloud.dbc.dk
+
+      # - |
+      #  FBS_CMS_CREDENTIALS=
+      #  ${VALID_FBS_CMS_CREDENTIALS},
+      #  ${VALID_FBS_CMS_CREDENTIALS_2},
+      #  ${VALID_FBS_CMS_CREDENTIALS_3}
 
       # staging
       # - FBS_CMS_API_URL=https://et.cicero-fbs.com/rest
