@@ -224,8 +224,6 @@ module.exports = async function (fastify, opts) {
           patronIdRequired,
         });
 
-        console.log("configuration", configuration);
-
         // Check if token is authenticated
         const isAuthenticatedToken = !!configuration?.user?.id;
 
