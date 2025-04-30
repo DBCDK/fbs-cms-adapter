@@ -222,6 +222,69 @@ describe("Testing the FBS CMS adapter", () => {
           message: "Forbidden",
         });
       });
+
+      it("should give access with correct fbs 'allowedAgencies' configuration", () => {
+        /**
+         * Expected flow:
+         * 1. Adapter uses token to fetch smaug configuration
+         * 2. smaug configuration fails to validate
+         */
+
+        const agencyId = "some-agencyid";
+
+        // Setup mocks
+        mockSmaug({
+          token: "TOKEN_OWN_AGENCY",
+          status: 200,
+          body: {
+            fbs: ownAgency,
+            user: validSmaugUser,
+            agencyId,
+          },
+        });
+        mockSmaug({
+          token: "TOKEN_USER_AGENCIES",
+          status: 200,
+          body: {
+            fbs: userAgencies,
+            user: validSmaugUser,
+            agencyId,
+          },
+        });
+        mockSmaug({
+          token: "TOKEN_ALL_AGENCIES",
+          status: 200,
+          body: {
+            fbs: allAgencies,
+            user: validSmaugUser,
+            agencyId,
+          },
+        });
+
+        // For each token we send request to adapter
+        // expecting to fail smaug configuration validation
+        [
+          "TOKEN_OWN_AGENCY",
+          "TOKEN_USER_AGENCIES",
+          "TOKEN_ALL_AGENCIES",
+        ].forEach((token) => {
+          // Setup mocks
+          mockFetchUserinfoAuthenticatedTokenSucces(token);
+
+          cy.request({
+            url: `/external/agencyid/some/path`,
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            failOnStatusCode: false,
+          }).then((res) => {
+            expect(res.status).to.eq(200);
+            expect(res.body).to.deep.include({
+              message: "from FBS CMS API",
+            });
+          });
+        });
+      });
     });
   });
 
