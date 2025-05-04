@@ -96,7 +96,7 @@ module.exports = async function (fastify, opts) {
       requestObj: {
         method: request.method,
         url: request.url,
-        headers: request.headers,
+        headers: ensureString(request.headers),
         hostname: request.hostname,
         remoteAddress: request.ip,
         remotePort: request.connection.remotePort,
@@ -120,7 +120,7 @@ module.exports = async function (fastify, opts) {
         method: request.method,
         url: request.url,
         body: ensureString(request.body),
-        headers: request.headers,
+        headers: ensureString(request.headers),
         hostname: request.hostname,
       },
       response: {
