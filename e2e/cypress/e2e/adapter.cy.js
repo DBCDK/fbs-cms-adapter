@@ -1468,7 +1468,7 @@ function mockFetchFbsPatronIdSucces(
   mockHTTP({
     request: {
       method: "POST",
-      path: `${basePath}/external/DK-${agencyId}/patrons/preauthenticated/v9`,
+      path: `${basePath}/external/DK-${agencyId}/patrons/preauthenticated/v10`,
       headers: {
         "x-session": "SOME_VALID_SESSION_KEY",
       },
@@ -1478,9 +1478,9 @@ function mockFetchFbsPatronIdSucces(
       status: 200,
       body: {
         authenticated: true,
-        patron: {
-          patronId: 1234,
-        },
+        // patron: {
+        patronId: 1234,
+        // },
       },
     },
   });
@@ -1520,7 +1520,7 @@ function mockFetchFbsPatronIdExpiredSessionKey(
   mockHTTP({
     request: {
       method: "POST",
-      path: `${basePath}/external/DK-${agencyId}/patrons/preauthenticated/v9`,
+      path: `${basePath}/external/DK-${agencyId}/patrons/preauthenticated/v10`,
       headers: {
         "x-session": "SOME_EXPIRED_SESSION_KEY",
       },
