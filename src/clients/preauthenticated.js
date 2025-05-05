@@ -30,7 +30,7 @@ function init({ redis, log }) {
       return redisVal;
     }
 
-    const path = `${fbsUrl}/external/${isil}/patrons/preauthenticated/v9`;
+    const path = `${fbsUrl}/external/${isil}/patrons/preauthenticated/v10`;
     const options = {
       method: "POST",
       headers: {
@@ -54,7 +54,7 @@ function init({ redis, log }) {
 
     switch (res.code) {
       case 200:
-        const patronId = res.body.patron && res.body.patron.patronId + "";
+        const patronId = res.body.patronId + "";
         if (!patronId) {
           log.error(
             `Failed to fetch patronId from /preauthenticated. User was not authenticated`
