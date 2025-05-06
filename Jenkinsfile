@@ -13,7 +13,7 @@ pipeline {
         DOCKER_TAG = "${imageLabel}"
         IMAGE = "${imageName}${env.BRANCH_NAME != 'main' ? "-${env.BRANCH_NAME.toLowerCase()}" : ''}:${imageLabel}"
         DOCKER_COMPOSE_NAME = "compose-${IMAGE}"
-        GITLAB_PRIVATE_TOKEN = credentials('isworker-gitlab-api-token')
+        GITLAB_PRIVATE_TOKEN = credentials('metascrum-gitlab-api-token')
     }
     stages {
         stage('Build image') {
@@ -23,17 +23,17 @@ pipeline {
                     app = docker.image("${IMAGE}")
             } }
         }
-        // stage('Integration test') {
-        //     steps {
-        //         script {
-        //             ansiColor('xterm') {
-        //                 sh 'echo Integrating...'
-        //                 sh "docker-compose -f docker-compose-cypress.yml -p ${DOCKER_COMPOSE_NAME} build"
-        //                 sh "IMAGE=${IMAGE} docker-compose -f docker-compose-cypress.yml -p ${DOCKER_COMPOSE_NAME} run e2e"
-        //             }
-        //         }
-        //     }
-        // }
+        stage('Integration test') {
+            steps {
+                script {
+                    ansiColor('xterm') {
+                        sh 'echo Integrating...'
+                        sh "docker-compose -f docker-compose-cypress.yml -p ${DOCKER_COMPOSE_NAME} build"
+                        sh "IMAGE=${IMAGE} docker-compose -f docker-compose-cypress.yml -p ${DOCKER_COMPOSE_NAME} run e2e"
+                    }
+                }
+            }
+        }
         stage('Push to Artifactory') {
             when {
                 branch 'main'
@@ -52,7 +52,7 @@ pipeline {
         stage("Update staging version number") {
             agent {
                 docker {
-                    label 'devel11'
+                    label 'devel10'
                     image "docker-dbc.artifacts.dbccloud.dk/build-env:latest"
                     alwaysPull true
                 }
@@ -73,16 +73,10 @@ pipeline {
         always {
             sh """
                     echo Clean up
+                    docker-compose -f docker-compose-cypress.yml -p ${DOCKER_COMPOSE_NAME} down -v
                     docker rmi $IMAGE
                 """
         }
-        // always {
-        //     sh """
-        //             echo Clean up
-        //             docker-compose -f docker-compose-cypress.yml -p ${DOCKER_COMPOSE_NAME} down -v
-        //             docker rmi $IMAGE
-        //         """
-        // }
         failure {
             script {
                 if ("${env.BRANCH_NAME}" == 'main') {

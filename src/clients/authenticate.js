@@ -12,31 +12,31 @@ function init({ redis, log }) {
   async function fetch({
     token,
     sessionKey,
-    configuration,
+    credentials,
     attributes,
     skipCache = false,
   }) {
-    const agencyid = configuration.fbs.agencyid;
-    const fbsCmsUrl = configuration.fbs.url || process.env.FBS_CMS_API_URL;
+    const { isil, agencyId, fbsUrl } = credentials;
+
     const userId = attributes.userId;
     const userPin = attributes.pincode;
 
-    const redisVal = !skipCache && (await redis.get(token));
+    // Redis key according to agencyId
+    const redisKey = agencyId + "-" + token;
+    const redisVal = !skipCache && (await redis.get(redisKey));
 
     if (redisVal) {
       return redisVal;
     }
 
-    const credentials = { libraryCardNumber: userId, pincode: userPin };
-
-    const path = `${fbsCmsUrl}/external/${agencyid}/patrons/authenticate/v9`;
+    const path = `${fbsUrl}/external/${isil}/patrons/authenticate/v9`;
     const options = {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-Session": sessionKey,
       },
-      body: JSON.stringify(credentials),
+      body: JSON.stringify({ libraryCardNumber: userId, pincode: userPin }),
     };
 
     if (process.env.HTTPS_PROXY) {
@@ -54,7 +54,7 @@ function init({ redis, log }) {
           );
           throw res;
         }
-        await redis.set(token, patronId);
+        await redis.set(redisKey, patronId);
         return patronId;
       case 401:
         // session key expired
