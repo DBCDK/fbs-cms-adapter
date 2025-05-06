@@ -143,8 +143,12 @@ module.exports = async function (fastify, opts) {
   });
 
   // route to check if server is running
+  
   fastify.get("/", { logLevel: "silent" }, async (request) => {
     return "ok";
+  });
+  fastify.head("/", { logLevel: "silent" }, async (request) => {
+    return ''; 
   });
 
   fastify.route({
