@@ -73,12 +73,6 @@ pipeline {
         always {
             sh """
                     echo Clean up
-                    docker rmi $IMAGE
-                """
-        }
-        always {
-            sh """
-                    echo Clean up
                     docker-compose -f docker-compose-cypress.yml -p ${DOCKER_COMPOSE_NAME} down -v
                     docker rmi $IMAGE
                 """
