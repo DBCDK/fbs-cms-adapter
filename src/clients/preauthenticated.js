@@ -12,22 +12,25 @@ function init({ redis, log }) {
   async function fetch({
     token,
     sessionKey,
-    configuration,
+    attributes,
+    credentials,
     skipCache = false,
   }) {
     const time = performance.now();
 
-    const agencyid = configuration.fbs.agencyid;
-    const fbsCmsUrl = configuration.fbs.url || process.env.FBS_CMS_API_URL;
-    const userId = configuration.user.id;
+    const { isil, agencyId, fbsUrl } = credentials;
 
-    const redisVal = !skipCache && (await redis.get(token));
+    const userId = attributes.userId;
+
+    // Redis key according to agencyId
+    const redisKey = agencyId + "-" + token;
+    const redisVal = !skipCache && (await redis.get(redisKey));
 
     if (redisVal) {
       return redisVal;
     }
 
-    const path = `${fbsCmsUrl}/external/${agencyid}/patrons/preauthenticated/v10`;
+    const path = `${fbsUrl}/external/${isil}/patrons/preauthenticated/v10`;
     const options = {
       method: "POST",
       headers: {
@@ -49,6 +52,8 @@ function init({ redis, log }) {
       time: performance.now() - time,
     };
 
+    console.log("################# res", res);
+
     switch (res.code) {
       case 200:
         const patronId = res.body.patronId + "";
@@ -58,7 +63,7 @@ function init({ redis, log }) {
           );
           throw res;
         }
-        await redis.set(token, patronId);
+        await redis.set(redisKey, patronId);
         return patronId;
       case 401:
         // session key expired

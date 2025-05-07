@@ -14,7 +14,12 @@ const initPreauthenticated = require("./clients/preauthenticated");
 const initAuthenticate = require("./clients/authenticate");
 const initFbsLogin = require("./clients/fbslogin");
 const initLogger = require("./logger");
-const { ensureString } = require("./utils");
+const {
+  ensureString,
+  getCredentials,
+  extractAgencyIdFromUrl,
+  extractAgencyPathFromUrl,
+} = require("./utils");
 
 // JSON Schema for validating the request headers
 const schema = {
@@ -99,7 +104,7 @@ module.exports = async function (fastify, opts) {
         headers: request.headers,
         hostname: request.hostname,
         remoteAddress: request.ip,
-        remotePort: request.connection.remotePort,
+        remotePort: request.socket?.remotePort,
       },
     });
 
@@ -210,31 +215,6 @@ module.exports = async function (fastify, opts) {
         // Check if we need to fetch patronId
         const patronIdRequired = request.url.includes("/patronid/");
 
-        // Check if method and url requires a CPR to be attached to the user
-        const cprRequired = !!whitelist.userinfo.find(
-          (obj) => obj.method === request.method && obj.url === request.url
-        );
-
-        //  Get userinfo attributes
-        const attributes = await userinfo.fetch({ token });
-
-        // If CPR is required we set CPR from userinfo attributes
-        // add to summary log
-        requestLogger.summary.cprRequired = cprRequired;
-
-        // if allowed, retrieve cpr from token
-        let cpr = null;
-        if (cprRequired) {
-          // ensure user is nemid validated (has cpr attribute) -> throws if not
-          validateUserinfoCPR({
-            attributes,
-            log: requestLogger,
-            token,
-          });
-
-          cpr = attributes.cpr;
-        }
-
         // add to summary log
         requestLogger.summary.patronIdRequired = patronIdRequired;
 
@@ -244,23 +224,130 @@ module.exports = async function (fastify, opts) {
           patronIdRequired,
         });
 
+        // Check if token is authenticated
+        const isAuthenticatedToken = !!configuration?.user?.id;
+
+        // add to summary log
+        requestLogger.summary.isAuthenticatedToken = isAuthenticatedToken;
+
+        // Verifies that the client is allowed to call the API
+
+        const allowedAgencies = configuration.fbs?.allowedAgencies;
+
+        // Check if client is allowed to access all given agencies
+        const allowAllAgencies = allowedAgencies === "all";
+
+        // Check if client is allowed to access all given agencies
+        const allowUserAgencies = allowedAgencies === "user";
+
+        // Check if client is allowed to access own agency
+        const allowOwnAgency = allowedAgencies === "own";
+
+        // Check if client is allowed access to the API
+        const hasAccess =
+          allowAllAgencies || allowUserAgencies || allowOwnAgency;
+
+        // add to summary log
+        requestLogger.summary.hasAccess = hasAccess;
+
+        // add to summary log
+        requestLogger.summary.allowedAgencies = allowedAgencies;
+
+        if (!hasAccess) {
+          // Client is not allowed to access the API
+          return reply.code(403).send({ message: "Forbidden" });
+        }
+
+        //  Get userinfo attributes
+        const attributes = await userinfo.fetch({ token });
+
+        // extract agencyId from url path, if any given (isil prefix will be removed)
+        const agencyIdFromUrl = extractAgencyIdFromUrl(request.url);
+
+        // Api path was called with a predefined agencyId
+        const hasUrlAgencyId = !!agencyIdFromUrl;
+
+        // url agencyId differs from clientconfiguration
+        const hasAlternativeAgencyId =
+          hasUrlAgencyId && agencyIdFromUrl !== configuration?.agencyId;
+
+        // add to summary log
+        requestLogger.summary.hasUrlAgencyId = hasUrlAgencyId;
+        requestLogger.summary.hasAlternativeAgencyId = hasAlternativeAgencyId;
+
+        // Verify that user is allowed to use the agencyId given in url
+        if (hasAlternativeAgencyId) {
+          // if client is allowed to use all agencies, we skip this check
+          if (!allowAllAgencies) {
+            // if client is allowed to access the api among users agencies
+
+            let allowAlternativeAgencyId = false;
+
+            if (allowUserAgencies) {
+              // check if user is allowed to use the agencyId given in url
+              if (isAuthenticatedToken) {
+                allowAlternativeAgencyId = !!attributes.agencies.find(
+                  (obj) => obj?.agencyId === agencyIdFromUrl
+                );
+              }
+
+              // add to summary log
+              requestLogger.summary.allowAlternativeAgencyId =
+                allowAlternativeAgencyId;
+            }
+
+            // throw a 405 if not allowed
+            if (!allowAlternativeAgencyId) {
+              return reply.code(405).send({ message: "Method Not Allowed" });
+            }
+          }
+        }
+
+        // Define used agencyId
+        const agencyId = agencyIdFromUrl || configuration?.agencyId;
+
+        // add to summary log
+        requestLogger.summary.agencyId = agencyId;
+        requestLogger.summary.clientId = configuration?.app?.clientId;
+
+        // Get credentials for agencyId
+        const credentials = getCredentials({
+          agencyId,
+          log: requestLogger,
+        });
+
+        // We need to login and get a sessionKey in order to call the FBS API
+        let sessionKey = await fbsLogin.fetch({
+          token,
+          credentials,
+        });
+
+        const subPath = extractAgencyPathFromUrl(request.url);
+
+        // Check if method and url requires a CPR to be attached to the user
+        const cprRequired = !!whitelist.userinfo.find((obj) => {
+          // Replace agencyid placeholder with the real from the request url
+          const url = obj.url.replace("/agencyid/", `/${subPath}/`);
+          return obj.method === request.method && url === request.url;
+        });
+
+        // If CPR is required we set CPR from userinfo attributes
+        // add to summary log
+        requestLogger.summary.cprRequired = cprRequired;
+
+        // if allowed, retrieve cpr from token
+        let cpr = null;
+        if (cprRequired) {
+          // ensure user is nemid validated (has cpr attribute) -> throws if not
+          validateUserinfoCPR({ attributes, log: requestLogger, token });
+          cpr = attributes.cpr;
+        }
+
         // nemlogin provider used
         const isNemlogin = attributes?.idpUsed === "nemlogin";
 
         // Set the FBS authentication method (preauthenticated/autenticate)
         const auth = isNemlogin ? preauthenticated : authenticate;
-        // add to summary log
-        requestLogger.summary.isAuthenticatedToken = !!configuration?.user?.id;
-
-        // add to summary log
-        requestLogger.summary.agencyId = configuration?.agencyId;
-        requestLogger.summary.clientId = configuration?.app?.clientId;
-
-        // We need to login and get a sessionKey in order to call the FBS API
-        let sessionKey = await fbsLogin.fetch({
-          token,
-          configuration,
-        });
 
         // add to summary log
         requestLogger.summary.hasSessionKey = !!sessionKey;
@@ -276,7 +363,7 @@ module.exports = async function (fastify, opts) {
             patronId = await auth.fetch({
               token,
               sessionKey,
-              configuration,
+              credentials,
               attributes,
             });
           }
@@ -287,7 +374,7 @@ module.exports = async function (fastify, opts) {
           proxyResponse = await proxy.fetch({
             sessionKey,
             patronId,
-            configuration,
+            credentials,
             cpr,
           });
         } catch (e) {
@@ -296,7 +383,7 @@ module.exports = async function (fastify, opts) {
             // This means sessionKey is expired and we have to login again
             sessionKey = await fbsLogin.fetch({
               token,
-              configuration,
+              credentials,
               skipCache: true,
             });
 
@@ -307,7 +394,7 @@ module.exports = async function (fastify, opts) {
               patronId = await auth.fetch({
                 token,
                 sessionKey,
-                configuration,
+                credentials,
                 attributes,
                 skipCache: true,
               });
@@ -315,7 +402,7 @@ module.exports = async function (fastify, opts) {
             proxyResponse = await proxy.fetch({
               sessionKey,
               patronId,
-              configuration,
+              credentials,
               cpr,
             });
           } else {

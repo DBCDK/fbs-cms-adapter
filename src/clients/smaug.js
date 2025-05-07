@@ -15,29 +15,6 @@ function validateSmaugUser({ configuration, log }) {
 }
 
 /**
- * Checks that configuration contains FBS credentials
- */
-function validateSmaugFBSCredentials({ configuration, log }) {
-  const isValid =
-    configuration &&
-    configuration.fbs &&
-    configuration.fbs.agencyid &&
-    configuration.fbs.username &&
-    configuration.fbs.password;
-
-  if (!isValid) {
-    log.info("Smaug configuration has invalid fbs credentials");
-    throw {
-      code: 403,
-      body: {
-        message:
-          "token must have FBS credentials with 'agencyid', 'username' and 'password'",
-      },
-    };
-  }
-}
-
-/**
  * Initializes the smaug fetcher
  */
 function init({ log }) {
@@ -62,7 +39,7 @@ function init({ log }) {
     switch (res.code) {
       case 200:
         const configuration = res.body;
-        validateSmaugFBSCredentials({ configuration, log });
+
         if (patronIdRequired) {
           validateSmaugUser({ configuration, log });
         }

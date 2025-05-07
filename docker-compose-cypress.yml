@@ -20,12 +20,24 @@ services:
       - FBS_CMS_API_URL=http://http_mock:3000/fbscms
       - REDIS_HOST=redis
       - USERINFO_URL=http://http_mock:3000/userinfo
+
+      - |
+        FBS_CMS_CREDENTIALS=
+        some-agencyid,some-username,some-password,
+        some-other-agencyid,some-username,some-password,
+        some-random-agencyid,some-username,some-password,
+        000001,some-username,some-password,
+        000002,some-username,some-password,http://http_mock:3000/some-url,
+        000003,
+        000004,some-username,
+        000005,,some-password,
+        
     depends_on:
       - http_mock
       - redis
   e2e:
     ipc: host ## Prevent Docker Crash in Cypress (https://github.com/cypress-io/cypress/issues/350)
-    image: docker-dbc.artifacts.dbccloud.dk/cypress:latest
+    image: docker-dbc.artifacts.dbccloud.dk/cypress:old-202409
     volumes:
       - "./e2e:/app/e2e"
     depends_on:
