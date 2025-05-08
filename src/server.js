@@ -36,14 +36,10 @@ const schema = {
 const whitelist = {
   // userinfo cpr request
   userinfo: [
-    // /external/agencyid/patrons/v5 is deprecated, and will be removed from fbs-cms
-    { method: "POST", url: "/external/agencyid/patrons/v5" },
-    { method: "POST", url: "/external/agencyid/patrons/v9" },
-    // /external/agencyid/patrons/withGuardian/v1 is deprecated, and will be removed from fbs-cms
-    { method: "POST", url: "/external/agencyid/patrons/withGuardian/v1" },
-    { method: "POST", url: "/external/agencyid/patrons/withGuardian/v3" },
-    // /external/agencyid/patrons/patronid/v3 is deprecated, and will be removed from fbs-cms
-    { method: "PUT", url: "/external/agencyid/patrons/patronid/v3" },
+    { method: "POST", url: "/external/agencyid/patrons/v9" }, // patrons/v9 can be removed when legacy enpoint in api expires
+    { method: "POST", url: "/external/agencyid/patrons/v10" },
+    { method: "POST", url: "/external/agencyid/patrons/withGuardian/v3" }, // withGuardian/v3 can be removed when legacy enpoint in api expires
+    { method: "POST", url: "/external/agencyid/patrons/withGuardian/v4" },
     { method: "PUT", url: "/external/agencyid/patrons/patronid/v8" },
   ],
 };

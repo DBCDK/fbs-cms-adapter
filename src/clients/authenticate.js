@@ -29,7 +29,7 @@ function init({ redis, log }) {
       return redisVal;
     }
 
-    const path = `${fbsUrl}/external/${isil}/patrons/authenticate/v9`;
+    const path = `${fbsUrl}/external/${isil}/patrons/authenticate/v10`;
     const options = {
       method: "POST",
       headers: {

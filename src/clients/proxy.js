@@ -1,41 +1,34 @@
 const HttpsProxyAgent = require("https-proxy-agent");
 const merge = require("lodash/merge");
 
-const { fetcher, getCredentials } = require("../utils");
+const { fetcher } = require("../utils");
 
+/**
+ * CPR attachment rules used to determine how a CPR number should be included
+ * in the request body based on HTTP method and URL prefix.
+ */
+const cprAttachmentRules = [
+  {
+    method: "POST",
+    urlPrefix: "/external/agencyid/patrons/withGuardian/",
+    buildBody: (cpr) => ({ guardian: { personIdentifier: cpr } }),
+  },
+  {
+    method: "PUT",
+    urlPrefix: "/external/agencyid/patrons/patronid/",
+    buildBody: (cpr) => ({ pincodeChange: { libraryCardNumber: cpr } }),
+  },
+];
+
+/**
+ * Builds the appropriate request body with CPR data based on HTTP method and URL.
+ */
 function attachCpr({ method, url, cpr }) {
-  // on POST to withGuardian url, cpr is attached to a deeper level body.guardian
-  const isGuardian =
-    method === "POST" &&
-    (url === "/external/agencyid/patrons/withGuardian/v1" ||
-      url === "/external/agencyid/patrons/withGuardian/v3");
+  const rule = cprAttachmentRules.find(
+    (r) => r.method === method && url.startsWith(r.urlPrefix)
+  );
 
-  if (isGuardian) {
-    // v1 is deprecated - this check can be removed when legacy version is no longer supported in fbs api
-    if (url === "/external/agencyid/patrons/withGuardian/v1") {
-      return { guardian: { cprNumber: cpr } };
-    }
-
-    return { guardian: { personIdentifier: cpr } };
-  }
-
-  // on PUT (pincodeChange) to /patrons/patronid url, cpr is attached to a deeper level body.pincodeChange as libraryCardNumber
-  const isPincodeChange =
-    method === "PUT" &&
-    (url === "/external/agencyid/patrons/patronid/v3" ||
-      url === "/external/agencyid/patrons/patronid/v8");
-
-  if (isPincodeChange) {
-    return { pincodeChange: { libraryCardNumber: cpr } };
-  }
-
-  // v5 is deprecated - this check can be removed when legacy version is no longer supported in fbs api
-  if (url === "/external/agencyid/patrons/v5") {
-    return { cprNumber: cpr };
-  }
-
-  // else return default at base level
-  return { personIdentifier: cpr };
+  return rule ? rule.buildBody(cpr) : { personIdentifier: cpr };
 }
 
 function replacePath({ url, agencyId, isil, patronId }) {
