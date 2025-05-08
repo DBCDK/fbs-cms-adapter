@@ -152,6 +152,11 @@ module.exports = async function (fastify, opts) {
     return "ok";
   });
 
+  // fastify fix for cypress 13 docker-image head request
+  fastify.head("/", { logLevel: "silent" }, async (request) => {
+    return "";
+  });
+
   fastify.route({
     method: ["GET", "POST", "PUT", "DELETE"],
     url: "*",
