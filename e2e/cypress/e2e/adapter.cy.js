@@ -1493,7 +1493,7 @@ function mockFetchFbsPatronIdSuccesInstitution(
   mockHTTP({
     request: {
       method: "POST",
-      path: `${basePath}/external/DK-${agencyId}/patrons/authenticate/v9`,
+      path: `${basePath}/external/DK-${agencyId}/patrons/authenticate/v10`,
       headers: {
         "x-session": "SOME_VALID_SESSION_KEY",
       },
