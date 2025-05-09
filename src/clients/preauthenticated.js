@@ -52,8 +52,6 @@ function init({ redis, log }) {
       time: performance.now() - time,
     };
 
-    console.log("################# res", res);
-
     switch (res.code) {
       case 200:
         const patronId = res.body.patronId + "";
