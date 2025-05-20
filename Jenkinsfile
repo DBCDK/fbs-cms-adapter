@@ -8,6 +8,11 @@ pipeline {
     agent {
         label 'devel11'
     }
+    triggers {
+        upstream(
+          upstreamProjects: env.BRANCH_NAME == "main" ? 'Docker-base-node-bump-trigger' : ''
+        )
+    }
     environment {
         GITLAB_ID = "1048"
         DOCKER_TAG = "${imageLabel}"
