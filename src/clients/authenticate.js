@@ -26,7 +26,7 @@ function init({ redis, log }) {
     const redisVal = !skipCache && (await redis.get(redisKey));
 
     if (redisVal) {
-      return redisVal;
+      return JSON.parse(redisVal);
     }
 
     const path = `${fbsUrl}/external/${isil}/patrons/authenticate/v10`;
@@ -45,6 +45,8 @@ function init({ redis, log }) {
 
     let res = await fetcher(path, options, log);
 
+    console.log("### authenticate.js => body", res.body);
+
     switch (res.code) {
       case 200:
         const patronId = res.body.patronId + "";
@@ -54,8 +56,13 @@ function init({ redis, log }) {
           );
           throw res;
         }
-        await redis.set(redisKey, patronId);
-        return patronId;
+        const authResult = {
+          patronId,
+          authenticateStatus: res.body.authenticateStatus,
+          patronType: res.body.patronType,
+        };
+        await redis.set(redisKey, JSON.stringify(authResult));
+        return authResult;
       case 401:
         // session key expired
         throw res;

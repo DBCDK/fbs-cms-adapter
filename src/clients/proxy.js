@@ -83,6 +83,10 @@ function init({ url, method, headers, body, log }) {
       options.body = typeof body === "object" ? JSON.stringify(body) : body;
     }
 
+    console.log("############# proxy.js => body", body);
+
+    return { code: 200, body: { dryRun: true } };
+
     let res = await fetcher(
       fbsUrl + replacePath({ url, agencyId, isil, patronId }),
       options,

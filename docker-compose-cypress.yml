@@ -6,6 +6,7 @@ services:
       - FASTIFY_LOG_LEVEL=info
       - FASTIFY_PRETTY_LOGS=false
       - REDIS_HOST=redis
+      # - REDIS_DISABLED=true
     command: bash -c "npx fastify start src/httpmock.js --watch"
     depends_on:
       - redis
@@ -19,6 +20,7 @@ services:
       - SMAUG_URL=http://http_mock:3000/smaug/configuration
       - FBS_CMS_API_URL=http://http_mock:3000/fbscms
       - REDIS_HOST=redis
+      # - REDIS_DISABLED=true
       - USERINFO_URL=http://http_mock:3000/userinfo
 
       - |

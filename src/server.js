@@ -26,9 +26,9 @@ const schema = {
   headers: {
     type: "object",
     properties: {
-      Authorization: { type: "string" },
+      authorization: { type: "string" },
     },
-    required: ["Authorization"],
+    required: ["authorization"],
   },
 };
 
@@ -55,6 +55,25 @@ function parsCorsOrigin() {
     return "*";
   } else {
     return originValue;
+  }
+}
+
+// Try once, refresh sessionKey on 401, then try once more
+async function withSessionKeyRetry({
+  attempt,
+  refreshSessionKey,
+  isRetryable,
+}) {
+  for (let i = 0; i < 2; i++) {
+    try {
+      return await attempt({ skipCache: i === 1 });
+    } catch (e) {
+      if (i === 0 && isRetryable(e)) {
+        await refreshSessionKey();
+        continue;
+      }
+      throw e;
+    }
   }
 }
 
@@ -211,7 +230,12 @@ module.exports = async function (fastify, opts) {
         }
 
         // The smaug token extracted from authorization header
-        const token = request.headers.authorization.replace(/bearer /i, "");
+        const authHeader = request.headers.authorization;
+        if (!authHeader) {
+          return reply.code(401).send({ message: "Unauthorized" });
+        }
+
+        const token = authHeader.replace(/bearer /i, "");
 
         // Check if we need to fetch patronId
         const patronIdRequired = request.url.includes("/patronid/");
@@ -336,14 +360,6 @@ module.exports = async function (fastify, opts) {
         // add to summary log
         requestLogger.summary.cprRequired = cprRequired;
 
-        // if allowed, retrieve cpr from token
-        let cpr = null;
-        if (cprRequired) {
-          // ensure user is nemid validated (has cpr attribute) -> throws if not
-          validateUserinfoCPR({ attributes, log: requestLogger, token });
-          cpr = attributes.cpr;
-        }
-
         // nemlogin provider used
         const isNemlogin = attributes?.idpUsed === "nemlogin";
 
@@ -353,35 +369,68 @@ module.exports = async function (fastify, opts) {
         // add to summary log
         requestLogger.summary.hasSessionKey = !!sessionKey;
 
-        // Holds the patronId
+        // Holds the auth result
+        let authResult;
+
+        // Holds patron details
         let patronId;
+        let patronType;
+        let authenticateStatus;
+
+        // if allowed, retrieve cpr from token
+        let cpr = null;
 
         // Holds the proxy response
         let proxyResponse;
 
-        try {
+        // Single execution attempt (auth + CPR + proxy)
+        const attempt = async ({ skipCache = false } = {}) => {
           if (patronIdRequired) {
-            patronId = await auth.fetch({
+            authResult = await auth.fetch({
               token,
               sessionKey,
               credentials,
               attributes,
+              skipCache,
             });
+
+            // set patronId
+            patronId = authResult?.patronId;
+            // set PatronType
+            patronType = authResult?.patronType;
+            // set authenticateStatus
+            authenticateStatus = authResult?.authenticateStatus;
           }
+
+          console.log("############# server.js => authResult", authResult);
 
           // add to summary log
           requestLogger.summary.hasPatronId = !!patronId;
+          requestLogger.summary.patronType = patronType;
+          requestLogger.summary.authenticateStatus = authenticateStatus;
 
-          proxyResponse = await proxy.fetch({
+          // Update cpr for patronType PERSON if exist
+          if (cprRequired) {
+            // ensure user is nemid validated (has cpr attribute) -> throws if not
+            if (patronType === "PERSON") {
+              validateUserinfoCPR({ attributes, log: requestLogger, token });
+              cpr = attributes.cpr;
+            }
+          }
+
+          return proxy.fetch({
             sessionKey,
             patronId,
             credentials,
             cpr,
           });
-        } catch (e) {
-          if (e.code === 401) {
-            // Calls to the FBS API may fail with 401
-            // This means sessionKey is expired and we have to login again
+        };
+
+        proxyResponse = await withSessionKeyRetry({
+          attempt,
+          isRetryable: (e) => e?.code === 401,
+          refreshSessionKey: async () => {
+            // Refresh sessionKey before retry
             sessionKey = await fbsLogin.fetch({
               token,
               credentials,
@@ -390,27 +439,8 @@ module.exports = async function (fastify, opts) {
 
             // add to summary log
             requestLogger.summary.sessionKeyRefetch = true;
-
-            if (patronIdRequired) {
-              patronId = await auth.fetch({
-                token,
-                sessionKey,
-                credentials,
-                attributes,
-                skipCache: true,
-              });
-            }
-            proxyResponse = await proxy.fetch({
-              sessionKey,
-              patronId,
-              credentials,
-              cpr,
-            });
-          } else {
-            // Give up, and pass the error to the caller
-            throw e;
-          }
-        }
+          },
+        });
 
         // Finally send the proxied response to the caller
         reply.code(proxyResponse.code).send(await proxyResponse.body);
