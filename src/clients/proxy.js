@@ -1,34 +1,39 @@
 const HttpsProxyAgent = require("https-proxy-agent");
 const merge = require("lodash/merge");
 
-const { fetcher } = require("../utils");
-
-/**
- * CPR attachment rules used to determine how a CPR number should be included
- * in the request body based on HTTP method and URL prefix.
- */
-const cprAttachmentRules = [
-  {
-    method: "POST",
-    urlPrefix: "/external/agencyid/patrons/withGuardian/",
-    buildBody: (cpr) => ({ guardian: { personIdentifier: cpr } }),
-  },
-  {
-    method: "PUT",
-    urlPrefix: "/external/agencyid/patrons/patronid/",
-    buildBody: (cpr) => ({ pincodeChange: { libraryCardNumber: cpr } }),
-  },
-];
+const { fetcher, parseBody, stringifyBody } = require("../utils");
 
 /**
  * Builds the appropriate request body with CPR data based on HTTP method and URL.
  */
-function attachCpr({ method, url, cpr }) {
-  const rule = cprAttachmentRules.find(
-    (r) => r.method === method && url.startsWith(r.urlPrefix)
-  );
+function attachIdentifiers({ method, url, libraryCardNumber, originalBody }) {
+  const bodyObj = parseBody(originalBody);
 
-  return rule ? rule.buildBody(cpr) : { personIdentifier: cpr };
+  if (
+    method === "POST" &&
+    url.startsWith("/external/agencyid/patrons/withGuardian/")
+  ) {
+    return merge({}, bodyObj, {
+      guardian: { personIdentifier: libraryCardNumber },
+    });
+  }
+
+  if (
+    method === "PUT" &&
+    url.startsWith("/external/agencyid/patrons/patronid/v8")
+  ) {
+    const hasPincodeChange = !!bodyObj?.pincodeChange;
+    const hasLibraryCardNumber = !!bodyObj?.pincodeChange?.libraryCardNumber;
+
+    if (hasPincodeChange && !hasLibraryCardNumber) {
+      return merge({}, bodyObj, { pincodeChange: { libraryCardNumber } });
+    }
+
+    return bodyObj;
+  }
+
+  // Default: do nothing
+  return bodyObj;
 }
 
 function replacePath({ url, agencyId, isil, patronId }) {
@@ -51,7 +56,12 @@ function init({ url, method, headers, body, log }) {
   /**
    * The actual fetch function
    */
-  async function fetch({ sessionKey, credentials, patronId, cpr }) {
+  async function fetch({
+    sessionKey,
+    credentials,
+    patronId,
+    libraryCardNumber,
+  }) {
     const time = performance.now();
 
     const { isil, agencyId, fbsUrl } = credentials;
@@ -71,27 +81,26 @@ function init({ url, method, headers, body, log }) {
     delete options.headers.host;
     delete options.headers.authorization;
 
-    if (cpr) {
-      const copy = typeof body === "object" ? body : JSON.parse(body || {});
-      // attatch cprNumber to body according to url and method
-      const attachedCpr = attachCpr({ url, method, cpr });
-      // attach cpr to body
-      body = merge({}, copy, attachedCpr);
+    if (libraryCardNumber) {
+      body = attachIdentifiers({
+        method,
+        url,
+        libraryCardNumber,
+        originalBody: body,
+      });
     }
 
     if (body) {
-      options.body = typeof body === "object" ? JSON.stringify(body) : body;
+      options.body = stringifyBody(body);
     }
-
-    console.log("############# proxy.js => body", body);
-
-    return { code: 200, body: { dryRun: true } };
 
     let res = await fetcher(
       fbsUrl + replacePath({ url, agencyId, isil, patronId }),
       options,
       log
     );
+
+    console.log("################res", res);
 
     // log response to summary
     log.summary.datasources.fbs = {

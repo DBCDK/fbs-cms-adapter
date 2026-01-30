@@ -34,15 +34,26 @@ const schema = {
 
 // whitelist request specifications
 const whitelist = {
-  // userinfo cpr request
-  userinfo: [
-    { method: "POST", url: "/external/agencyid/patrons/v9" }, // patrons/v9 can be removed when legacy enpoint in api expires
+  // kræver CPR/personIdentifier (hard fail hvis det mangler)
+  userinfo_strict: [
+    { method: "POST", url: "/external/agencyid/patrons/v9" }, // Legacy version, removed when FBS support is dropped
     { method: "POST", url: "/external/agencyid/patrons/v10" },
-    { method: "POST", url: "/external/agencyid/patrons/withGuardian/v3" }, // withGuardian/v3 can be removed when legacy enpoint in api expires
+    { method: "POST", url: "/external/agencyid/patrons/withGuardian/v3" }, // Legacy version, removed when FBS support is dropped
     { method: "POST", url: "/external/agencyid/patrons/withGuardian/v4" },
+  ],
+
+  // kan bruge CPR som fallback (må ikke hard-faile, hvis der ikke er CPR)
+  userinfo_optional: [
     { method: "PUT", url: "/external/agencyid/patrons/patronid/v8" },
   ],
 };
+
+function isWhitelisted({ list, method, url, subPath }) {
+  return !!list.find((obj) => {
+    const expectedUrl = obj.url.replace("/agencyid/", `/${subPath}/`);
+    return obj.method === method && expectedUrl === url;
+  });
+}
 
 const corsOptions = {
   origin: parsCorsOrigin(),
@@ -349,16 +360,24 @@ module.exports = async function (fastify, opts) {
 
         const subPath = extractAgencyPathFromUrl(request.url);
 
-        // Check if method and url requires a CPR to be attached to the user
-        const cprRequired = !!whitelist.userinfo.find((obj) => {
-          // Replace agencyid placeholder with the real from the request url
-          const url = obj.url.replace("/agencyid/", `/${subPath}/`);
-          return obj.method === request.method && url === request.url;
+        const cprStrictRequired = isWhitelisted({
+          list: whitelist.userinfo_strict,
+          method: request.method,
+          url: request.url,
+          subPath,
+        });
+
+        const cprOptional = isWhitelisted({
+          list: whitelist.userinfo_optional,
+          method: request.method,
+          url: request.url,
+          subPath,
         });
 
         // If CPR is required we set CPR from userinfo attributes
         // add to summary log
-        requestLogger.summary.cprRequired = cprRequired;
+        requestLogger.summary.cprStrictRequired = cprStrictRequired;
+        requestLogger.summary.cprOptional = cprOptional;
 
         // nemlogin provider used
         const isNemlogin = attributes?.idpUsed === "nemlogin";
@@ -376,9 +395,6 @@ module.exports = async function (fastify, opts) {
         let patronId;
         let patronType;
         let authenticateStatus;
-
-        // if allowed, retrieve cpr from token
-        let cpr = null;
 
         // Holds the proxy response
         let proxyResponse;
@@ -402,19 +418,26 @@ module.exports = async function (fastify, opts) {
             authenticateStatus = authResult?.authenticateStatus;
           }
 
-          console.log("############# server.js => authResult", authResult);
-
           // add to summary log
           requestLogger.summary.hasPatronId = !!patronId;
           requestLogger.summary.patronType = patronType;
           requestLogger.summary.authenticateStatus = authenticateStatus;
 
-          // Update cpr for patronType PERSON if exist
-          if (cprRequired) {
-            // ensure user is nemid validated (has cpr attribute) -> throws if not
-            if (patronType === "PERSON") {
+          let libraryCardNumber = null;
+
+          // Strict endpoints: CPR er et krav
+          if (cprStrictRequired) {
+            if (!patronType || patronType === "PERSON") {
               validateUserinfoCPR({ attributes, log: requestLogger, token });
-              cpr = attributes.cpr;
+              libraryCardNumber = attributes.cpr;
+            }
+          }
+
+          // Optional endpoint (PUT v8): best effort (ingen hard fail)
+          else if (cprOptional) {
+            const isPersonLike = !patronType || patronType === "PERSON";
+            if (isPersonLike) {
+              libraryCardNumber = attributes?.cpr || attributes?.userId || null;
             }
           }
 
@@ -422,7 +445,7 @@ module.exports = async function (fastify, opts) {
             sessionKey,
             patronId,
             credentials,
-            cpr,
+            libraryCardNumber,
           });
         };
 
