@@ -6,7 +6,7 @@ services:
       - FASTIFY_LOG_LEVEL=error
       - FASTIFY_PRETTY_LOGS=false
       - REDIS_HOST=redis
-      # - REDIS_DISABLED=true
+      - REDIS_DISABLED=false
     volumes:
       - "./src:/home/node/app/src"
     command: bash -c "npx fastify start src/httpmock.js --watch"
@@ -22,6 +22,7 @@ services:
       - CORS_ORIGIN=all
       - REDIS_HOST=redis
       - REDIS_DISABLED=true
+      - REDIS_PREFIX=fbscmsadapter-dev-1
       
       # local
       # - FASTIFY_LOG_LEVEL=silent

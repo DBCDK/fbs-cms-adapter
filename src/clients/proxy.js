@@ -1,3 +1,4 @@
+// clients/proxy.js
 const HttpsProxyAgent = require("https-proxy-agent");
 const merge = require("lodash/merge");
 
@@ -6,16 +7,28 @@ const { fetcher, parseBody, stringifyBody } = require("../utils");
 /**
  * Builds the appropriate request body with CPR data based on HTTP method and URL.
  */
-function attachIdentifiers({ method, url, libraryCardNumber, originalBody }) {
+function attachIdentifiers({ method, url, personIdentifier, originalBody }) {
   const bodyObj = parseBody(originalBody);
 
   if (
     method === "POST" &&
     url.startsWith("/external/agencyid/patrons/withGuardian/")
   ) {
-    return merge({}, bodyObj, {
-      guardian: { personIdentifier: libraryCardNumber },
-    });
+    // Backwards compatible: inject guardian.personIdentifier if missing
+    if (!bodyObj?.guardian?.personIdentifier) {
+      return merge({}, bodyObj, {
+        guardian: { personIdentifier },
+      });
+    }
+    return bodyObj;
+  }
+
+  // Backwards compatible: inject personIdentifier for create patron endpoints if missing
+  if (method === "POST" && url.startsWith("/external/agencyid/patrons/")) {
+    if (!bodyObj?.personIdentifier) {
+      return merge({}, bodyObj, { personIdentifier });
+    }
+    return bodyObj;
   }
 
   if (
@@ -26,7 +39,9 @@ function attachIdentifiers({ method, url, libraryCardNumber, originalBody }) {
     const hasLibraryCardNumber = !!bodyObj?.pincodeChange?.libraryCardNumber;
 
     if (hasPincodeChange && !hasLibraryCardNumber) {
-      return merge({}, bodyObj, { pincodeChange: { libraryCardNumber } });
+      return merge({}, bodyObj, {
+        pincodeChange: { libraryCardNumber: personIdentifier },
+      });
     }
 
     return bodyObj;
@@ -60,7 +75,7 @@ function init({ url, method, headers, body, log }) {
     sessionKey,
     credentials,
     patronId,
-    libraryCardNumber,
+    personIdentifier,
   }) {
     const time = performance.now();
 
@@ -81,11 +96,11 @@ function init({ url, method, headers, body, log }) {
     delete options.headers.host;
     delete options.headers.authorization;
 
-    if (libraryCardNumber) {
+    if (personIdentifier) {
       body = attachIdentifiers({
         method,
         url,
-        libraryCardNumber,
+        personIdentifier,
         originalBody: body,
       });
     }
@@ -99,8 +114,6 @@ function init({ url, method, headers, body, log }) {
       options,
       log
     );
-
-    console.log("################res", res);
 
     // log response to summary
     log.summary.datasources.fbs = {

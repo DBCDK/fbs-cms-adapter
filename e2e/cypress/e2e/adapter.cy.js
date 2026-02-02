@@ -222,54 +222,55 @@ describe("Testing the FBS CMS adapter", () => {
           message: "Forbidden",
         });
       });
+    });
 
-      it("should give access with correct fbs 'allowedAgencies' configuration", () => {
-        /**
-         * Expected flow:
-         * 1. Adapter uses token to fetch smaug configuration
-         * 2. smaug configuration fails to validate
-         */
+    it("should give access with correct fbs 'allowedAgencies' configuration", () => {
+      /**
+       * Expected flow:
+       * 1. Adapter uses token to fetch smaug configuration
+       * 2. smaug configuration fails to validate
+       */
 
-        const agencyId = "some-agencyid";
+      const agencyId = "some-agencyid";
 
-        // Setup mocks
-        mockSmaug({
-          token: "TOKEN_OWN_AGENCY",
-          status: 200,
-          body: {
-            fbs: ownAgency,
-            user: validSmaugUser,
-            agencyId,
-          },
-        });
-        mockSmaug({
-          token: "TOKEN_USER_AGENCIES",
-          status: 200,
-          body: {
-            fbs: userAgencies,
-            user: validSmaugUser,
-            agencyId,
-          },
-        });
-        mockSmaug({
-          token: "TOKEN_ALL_AGENCIES",
-          status: 200,
-          body: {
-            fbs: allAgencies,
-            user: validSmaugUser,
-            agencyId,
-          },
-        });
+      // Setup mocks
+      mockSmaug({
+        token: "TOKEN_OWN_AGENCY",
+        status: 200,
+        body: {
+          fbs: ownAgency,
+          user: validSmaugUser,
+          agencyId,
+        },
+      });
+      mockSmaug({
+        token: "TOKEN_USER_AGENCIES",
+        status: 200,
+        body: {
+          fbs: userAgencies,
+          user: validSmaugUser,
+          agencyId,
+        },
+      });
+      mockSmaug({
+        token: "TOKEN_ALL_AGENCIES",
+        status: 200,
+        body: {
+          fbs: allAgencies,
+          user: validSmaugUser,
+          agencyId,
+        },
+      });
 
-        // For each token we send request to adapter
-        // expecting to fail smaug configuration validation
-        [
-          "TOKEN_OWN_AGENCY",
-          "TOKEN_USER_AGENCIES",
-          "TOKEN_ALL_AGENCIES",
-        ].forEach((token) => {
+      // For each token we send request to adapter
+      // expecting to fail smaug configuration validation
+      ["TOKEN_OWN_AGENCY", "TOKEN_USER_AGENCIES", "TOKEN_ALL_AGENCIES"].forEach(
+        (token) => {
           // Setup mocks
           mockFetchUserinfoAuthenticatedTokenSucces(token);
+
+          mockFetchFbsSessionKeySucces();
+          mockFetchFbsCmsAnonymousPathSucces();
 
           cy.request({
             url: `/external/agencyid/some/path`,
@@ -283,8 +284,8 @@ describe("Testing the FBS CMS adapter", () => {
               message: "from FBS CMS API",
             });
           });
-        });
-      });
+        }
+      );
     });
   });
 
@@ -570,7 +571,8 @@ describe("Testing the FBS CMS adapter", () => {
         expect(value).to.equal("SOME_VALID_SESSION_KEY");
       });
       redisGet({ key: redisKey, namespace: "patronid" }).then((value) => {
-        expect(value).to.equal("1234");
+        const obj = JSON.parse(value);
+        expect(obj.patronId).to.equal("1234");
       });
     });
 
@@ -626,7 +628,8 @@ describe("Testing the FBS CMS adapter", () => {
         expect(value).to.equal("SOME_VALID_SESSION_KEY");
       });
       redisGet({ key: redisKey, namespace: "patronid" }).then((value) => {
-        expect(value).to.equal("1234");
+        const obj = JSON.parse(value);
+        expect(obj.patronId).to.equal("1234");
       });
     });
 
@@ -660,7 +663,11 @@ describe("Testing the FBS CMS adapter", () => {
         value: "SOME_VALID_SESSION_KEY",
         namespace: "sessionkey",
       });
-      redisSet({ key: redisKey, value: "1234", namespace: "patronid" });
+      redisSet({
+        key: redisKey,
+        value: JSON.stringify({ patronId: "1234" }),
+        namespace: "patronid",
+      });
       mockFetchFbsCmsAuthenticatedPathSucces();
 
       // Send request to adapter
@@ -735,7 +742,8 @@ describe("Testing the FBS CMS adapter", () => {
         expect(value).to.equal("SOME_VALID_SESSION_KEY");
       });
       redisGet({ key: redisKey, namespace: "patronid" }).then((value) => {
-        expect(value).to.equal("1234");
+        const obj = JSON.parse(value);
+        expect(obj.patronId).to.equal("1234");
       });
     });
 
@@ -773,7 +781,11 @@ describe("Testing the FBS CMS adapter", () => {
         value: "SOME_EXPIRED_SESSION_KEY",
         namespace: "sessionkey",
       });
-      redisSet({ key: redisKey, value: "12345", namespace: "patronid" });
+      redisSet({
+        key: redisKey,
+        value: JSON.stringify({ patronId: "12345" }),
+        namespace: "patronid",
+      });
       mockFetchFbsCmsAuthenticatedPathExpiredSessionKey();
       mockFetchFbsSessionKeySucces();
       mockFetchFbsPatronIdSucces();
@@ -799,7 +811,8 @@ describe("Testing the FBS CMS adapter", () => {
         expect(value).to.equal("SOME_VALID_SESSION_KEY");
       });
       redisGet({ key: redisKey, namespace: "patronid" }).then((value) => {
-        expect(value).to.equal("1234");
+        const obj = JSON.parse(value);
+        expect(obj.patronId).to.equal("1234");
       });
     });
 
@@ -837,6 +850,47 @@ describe("Testing the FBS CMS adapter", () => {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        body: {}, // client does not send personIdentifier; adapter injects it
+        failOnStatusCode: false,
+      }).then((res) => {
+        expect(res.status).to.eq(200);
+        expect(res.body).to.deep.include({
+          message: "hello new patron",
+        });
+      });
+    });
+
+    it("Does not override personIdentifier when client sends it", () => {
+      /**
+       * Expected flow:
+       * 1. Client sends personIdentifier explicitly
+       * 2. Adapter must NOT override it
+       */
+
+      const token = "TOKEN";
+      const agencyId = "some-agencyid";
+
+      mockSmaug({
+        token,
+        status: 200,
+        body: {
+          fbs: ownAgency,
+          user: validSmaugUser,
+          agencyId,
+        },
+      });
+
+      mockFetchUserinfoAuthenticatedTokenSucces();
+      mockFetchFbsSessionKeySucces();
+      mockCreatePatronClientProvidedPersonIdentifierSucces();
+
+      cy.request({
+        method: "POST",
+        url: "/external/agencyid/patrons/v9",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: { personIdentifier: "client-personIdentifier" },
         failOnStatusCode: false,
       }).then((res) => {
         expect(res.status).to.eq(200);
@@ -893,6 +947,53 @@ describe("Testing the FBS CMS adapter", () => {
       });
     });
 
+    it("Does not override guardian.personIdentifier when client sends it", () => {
+      /**
+       * Expected flow:
+       * 1. Client sends guardian.personIdentifier explicitly
+       * 2. Adapter must NOT override it
+       */
+
+      const token = "TOKEN";
+      const agencyId = "some-agencyid";
+
+      mockSmaug({
+        token,
+        status: 200,
+        body: {
+          fbs: ownAgency,
+          user: validSmaugUser,
+          agencyId,
+        },
+      });
+
+      mockFetchUserinfoAuthenticatedTokenSucces();
+      mockFetchFbsSessionKeySucces();
+      mockCreatePatronWithGuardianClientProvidedPersonIdentifierSucces();
+
+      cy.request({
+        method: "POST",
+        url: "/external/agencyid/patrons/withGuardian/v3",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: {
+          "some-prop": "some-value",
+          guardian: {
+            name: "some-name",
+            email: "some-email",
+            personIdentifier: "client-guardian-personIdentifier",
+          },
+        },
+        failOnStatusCode: false,
+      }).then((res) => {
+        expect(res.status).to.eq(200);
+        expect(res.body).to.deep.include({
+          message: "hello new guardian created patron",
+        });
+      });
+    });
+
     it("Can fetch CPR data from authorized token (/userinfo) when updating pincode for patron", () => {
       /**
        * Expected flow:
@@ -931,6 +1032,7 @@ describe("Testing the FBS CMS adapter", () => {
         body: {
           "some-prop": "some-value",
           "some-other-prop": { "some-deeper-prop": "some-deeper-value" },
+          pincodeChange: { pincode: "4567" },
         },
         failOnStatusCode: false,
       }).then((res) => {
@@ -1032,7 +1134,10 @@ describe("Testing the FBS CMS adapter", () => {
         expect(value).to.equal("SOME_VALID_SESSION_KEY");
       });
       redisGet({ key: redisKey, namespace: "patronid" }).then((value) => {
-        expect(value).to.equal("1234");
+        const obj = JSON.parse(value);
+        expect(obj.patronId).to.equal("1234");
+        expect(obj.patronType).to.equal("COMPANY");
+        expect(obj.authenticateStatus).to.equal("VALID");
       });
     });
   });
@@ -1229,7 +1334,8 @@ describe("Testing the FBS CMS adapter", () => {
         expect(value).to.equal("SOME_VALID_SESSION_KEY");
       });
       redisGet({ key: redisKey, namespace: "patronid" }).then((value) => {
-        expect(value).to.equal("1234");
+        const obj = JSON.parse(value);
+        expect(obj.patronId).to.equal("1234");
       });
     });
 
@@ -1279,7 +1385,8 @@ describe("Testing the FBS CMS adapter", () => {
         expect(value).to.equal("SOME_VALID_SESSION_KEY");
       });
       redisGet({ key: redisKey, namespace: "patronid" }).then((value) => {
-        expect(value).to.equal("1234");
+        const obj = JSON.parse(value);
+        expect(obj.patronId).to.equal("1234");
       });
     });
 
@@ -1332,7 +1439,8 @@ describe("Testing the FBS CMS adapter", () => {
         expect(value).to.equal("SOME_VALID_SESSION_KEY");
       });
       redisGet({ key: redisKey, namespace: "patronid" }).then((value) => {
-        expect(value).to.equal("1234");
+        const obj = JSON.parse(value);
+        expect(obj.patronId).to.equal("1234");
       });
     });
 
@@ -1421,7 +1529,7 @@ function resetMockHTTP() {
   cy.request({
     method: "POST",
     url: `${mockHTTPUrl}/reset`,
-    body: { namespaces: ["patronid", "sessionid"] },
+    body: { namespaces: ["patronid", "sessionkey"] },
   });
 }
 
@@ -1710,7 +1818,24 @@ function mockCreatePatronInjectedCprSucces(
     request: {
       method: "POST",
       path: `${basePath}/external/DK-${agencyId}/patrons/v9`,
-      body: '{"personIdentifier":"some-cpr"}',
+      body: { personIdentifier: "some-cpr" },
+    },
+    response: {
+      status: 200,
+      body: { message: "hello new patron" },
+    },
+  });
+}
+
+function mockCreatePatronClientProvidedPersonIdentifierSucces(
+  basePath = "/fbscms",
+  agencyId = "some-agencyid"
+) {
+  mockHTTP({
+    request: {
+      method: "POST",
+      path: `${basePath}/external/DK-${agencyId}/patrons/v9`,
+      body: { personIdentifier: "client-personIdentifier" },
     },
     response: {
       status: 200,
@@ -1743,6 +1868,30 @@ function mockCreatePatronWithGuardianInjectedCprSucces(
   });
 }
 
+function mockCreatePatronWithGuardianClientProvidedPersonIdentifierSucces(
+  basePath = "/fbscms",
+  agencyId = "some-agencyid"
+) {
+  mockHTTP({
+    request: {
+      method: "POST",
+      path: `${basePath}/external/DK-${agencyId}/patrons/withGuardian/v3`,
+      body: {
+        "some-prop": "some-value",
+        guardian: {
+          name: "some-name",
+          email: "some-email",
+          personIdentifier: "client-guardian-personIdentifier",
+        },
+      },
+    },
+    response: {
+      status: 200,
+      body: { message: "hello new guardian created patron" },
+    },
+  });
+}
+
 function mockUpdatePatronPincodeInjectedCprSucces(
   basePath = "/fbscms",
   agencyId = "some-agencyid"
@@ -1757,7 +1906,7 @@ function mockUpdatePatronPincodeInjectedCprSucces(
       body: {
         "some-prop": "some-value",
         "some-other-prop": { "some-deeper-prop": "some-deeper-value" },
-        pincodeChange: { libraryCardNumber: "some-cpr" },
+        pincodeChange: { pincode: "4567", libraryCardNumber: "some-cpr" },
       },
     },
     response: {

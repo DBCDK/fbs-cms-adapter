@@ -1,3 +1,4 @@
+// server.js
 "use strict";
 
 const { log } = require("dbc-node-logger");
@@ -423,21 +424,22 @@ module.exports = async function (fastify, opts) {
           requestLogger.summary.patronType = patronType;
           requestLogger.summary.authenticateStatus = authenticateStatus;
 
-          let libraryCardNumber = null;
+          // Passed to proxy for backwards compatible injection
+          let personIdentifier = null;
 
-          // Strict endpoints: CPR er et krav
+          // Strict endpoints
           if (cprStrictRequired) {
             if (!patronType || patronType === "PERSON") {
               validateUserinfoCPR({ attributes, log: requestLogger, token });
-              libraryCardNumber = attributes.cpr;
+              personIdentifier = attributes.cpr;
             }
           }
 
-          // Optional endpoint (PUT v8): best effort (ingen hard fail)
+          // Optional endpoints: (no hard fail)
           else if (cprOptional) {
             const isPersonLike = !patronType || patronType === "PERSON";
             if (isPersonLike) {
-              libraryCardNumber = attributes?.cpr || attributes?.userId || null;
+              personIdentifier = attributes?.cpr || attributes?.userId || null;
             }
           }
 
@@ -445,7 +447,7 @@ module.exports = async function (fastify, opts) {
             sessionKey,
             patronId,
             credentials,
-            libraryCardNumber,
+            personIdentifier,
           });
         };
 
