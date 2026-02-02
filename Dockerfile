@@ -1,4 +1,4 @@
-ARG NODE_BASEIMAGE=docker-dbc.artifacts.dbccloud.dk/dbc-node:latest
+ARG NODE_BASEIMAGE=docker-dbc.artifacts.dbccloud.dk/dbc-node:old-202605
 
 # ---- Base Node ----
 FROM  $NODE_BASEIMAGE AS build
@@ -11,7 +11,7 @@ COPY . .
 
 # install node packages
 RUN npm set progress=false && npm config set depth 0 && \
-    npm install
+    npm ci
 
 # ---- Release ----
 FROM $NODE_BASEIMAGE AS release
