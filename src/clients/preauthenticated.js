@@ -46,8 +46,6 @@ function init({ redis, log }) {
 
     let res = await fetcher(path, options, log);
 
-    console.log("### preauthenticated ### => ", res.body);
-
     // log response to summary
     log.summary.datasources.preauthenticated = {
       code: res.code,

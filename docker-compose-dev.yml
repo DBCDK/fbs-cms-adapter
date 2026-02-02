@@ -21,8 +21,8 @@ services:
     environment:
       - CORS_ORIGIN=all
       - REDIS_HOST=redis
-      - REDIS_DISABLED=true
-      - REDIS_PREFIX=fbscmsadapter-dev-1
+      # - REDIS_DISABLED=true
+      - REDIS_PREFIX=fbscmsadapter-dev-2
       
       # local
       # - FASTIFY_LOG_LEVEL=silent

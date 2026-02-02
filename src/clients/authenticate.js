@@ -45,8 +45,6 @@ function init({ redis, log }) {
 
     let res = await fetcher(path, options, log);
 
-    console.log("### authenticate.js => body", res.body);
-
     switch (res.code) {
       case 200:
         const patronId = res.body.patronId + "";
