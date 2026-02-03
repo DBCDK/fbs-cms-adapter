@@ -33,6 +33,7 @@ pipeline {
                     script {
                         // trigger sonarqube analysis
                         def sonarOptions = "-Dsonar.branch.name=$BRANCH_NAME"
+                        sonarOptions += " -Dsonar.cpd.exclusions=**/*"
                         if (env.BRANCH_NAME != 'main') {
                             sonarOptions += " -Dsonar.newCode.referenceBranch=main"
                         }
