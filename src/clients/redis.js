@@ -1,20 +1,14 @@
 const Redis = require("ioredis");
 
-const truthy = new Set(["1", "true", "yes", "y", "on"]);
 const falsy = new Set(["0", "false", "no", "n", "off"]);
 
 function isRedisDisabled() {
   const enabled = String(process.env.REDIS_ENABLED || "").toLowerCase();
-  if (enabled) {
-    return falsy.has(enabled);
+  if (!enabled) {
+    return false;
   }
 
-  const disabled = String(process.env.REDIS_DISABLED || "").toLowerCase();
-  if (disabled) {
-    return truthy.has(disabled);
-  }
-
-  return false;
+  return falsy.has(enabled);
 }
 
 const options = {
@@ -23,7 +17,7 @@ const options = {
 };
 
 function buildKeyPrefix(namespace) {
-  const prefix = process.env.REDIS_PREFIX;
+  const prefix = process.env.REDIS_PREFIX || "fbscmsadapter-1";
   return prefix ? `${prefix}:${namespace}` : namespace;
 }
 

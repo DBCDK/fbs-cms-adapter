@@ -46,24 +46,32 @@ function init({ redis, log }) {
     let res = await fetcher(path, options, log);
 
     switch (res.code) {
-      case 200:
-        const patronId = res.body.patronId + "";
-        if (!patronId) {
+      case 200: {
+        const rawPatronId = res?.body?.patronId;
+
+        if (rawPatronId == null) {
           log.error(
             `Failed to fetch patronId from /authenticate. User was not authenticated`
           );
           throw res;
         }
+
+        const patronId = String(rawPatronId);
+
         const authResult = {
           patronId,
           authenticateStatus: res.body.authenticateStatus,
           patronType: res.body.patronType,
         };
+
         await redis.set(redisKey, JSON.stringify(authResult));
         return authResult;
+      }
+
       case 401:
         // session key expired
         throw res;
+
       default:
         log.error(
           `Failed to fetch patronId from /authenticate. This is unexpected`,
