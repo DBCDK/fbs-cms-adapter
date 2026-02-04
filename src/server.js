@@ -1,3 +1,4 @@
+// server.js
 "use strict";
 
 const { log } = require("dbc-node-logger");
@@ -26,23 +27,34 @@ const schema = {
   headers: {
     type: "object",
     properties: {
-      Authorization: { type: "string" },
+      authorization: { type: "string" },
     },
-    required: ["Authorization"],
+    required: ["authorization"],
   },
 };
 
 // whitelist request specifications
 const whitelist = {
-  // userinfo cpr request
-  userinfo: [
-    { method: "POST", url: "/external/agencyid/patrons/v9" }, // patrons/v9 can be removed when legacy enpoint in api expires
+  // kræver CPR/personIdentifier (hard fail hvis det mangler)
+  userinfo_strict: [
+    { method: "POST", url: "/external/agencyid/patrons/v9" }, // Legacy version, removed when FBS support is dropped
     { method: "POST", url: "/external/agencyid/patrons/v10" },
-    { method: "POST", url: "/external/agencyid/patrons/withGuardian/v3" }, // withGuardian/v3 can be removed when legacy enpoint in api expires
+    { method: "POST", url: "/external/agencyid/patrons/withGuardian/v3" }, // Legacy version, removed when FBS support is dropped
     { method: "POST", url: "/external/agencyid/patrons/withGuardian/v4" },
+  ],
+
+  // kan bruge CPR som fallback (må ikke hard-faile, hvis der ikke er CPR)
+  userinfo_optional: [
     { method: "PUT", url: "/external/agencyid/patrons/patronid/v8" },
   ],
 };
+
+function isWhitelisted({ list, method, url, subPath }) {
+  return !!list.find((obj) => {
+    const expectedUrl = obj.url.replace("/agencyid/", `/${subPath}/`);
+    return obj.method === method && expectedUrl === url;
+  });
+}
 
 const corsOptions = {
   origin: parsCorsOrigin(),
@@ -55,6 +67,25 @@ function parsCorsOrigin() {
     return "*";
   } else {
     return originValue;
+  }
+}
+
+// Try once, refresh sessionKey on 401, then try once more
+async function withSessionKeyRetry({
+  attempt,
+  refreshSessionKey,
+  isRetryable,
+}) {
+  for (let i = 0; i < 2; i++) {
+    try {
+      return await attempt({ skipCache: i === 1 });
+    } catch (e) {
+      if (i === 0 && isRetryable(e)) {
+        await refreshSessionKey();
+        continue;
+      }
+      throw e;
+    }
   }
 }
 
@@ -211,7 +242,12 @@ module.exports = async function (fastify, opts) {
         }
 
         // The smaug token extracted from authorization header
-        const token = request.headers.authorization.replace(/bearer /i, "");
+        const authHeader = request.headers.authorization;
+        if (!authHeader) {
+          return reply.code(401).send({ message: "Unauthorized" });
+        }
+
+        const token = authHeader.replace(/bearer /i, "");
 
         // Check if we need to fetch patronId
         const patronIdRequired = request.url.includes("/patronid/");
@@ -325,24 +361,24 @@ module.exports = async function (fastify, opts) {
 
         const subPath = extractAgencyPathFromUrl(request.url);
 
-        // Check if method and url requires a CPR to be attached to the user
-        const cprRequired = !!whitelist.userinfo.find((obj) => {
-          // Replace agencyid placeholder with the real from the request url
-          const url = obj.url.replace("/agencyid/", `/${subPath}/`);
-          return obj.method === request.method && url === request.url;
+        const cprStrictRequired = isWhitelisted({
+          list: whitelist.userinfo_strict,
+          method: request.method,
+          url: request.url,
+          subPath,
+        });
+
+        const cprOptional = isWhitelisted({
+          list: whitelist.userinfo_optional,
+          method: request.method,
+          url: request.url,
+          subPath,
         });
 
         // If CPR is required we set CPR from userinfo attributes
         // add to summary log
-        requestLogger.summary.cprRequired = cprRequired;
-
-        // if allowed, retrieve cpr from token
-        let cpr = null;
-        if (cprRequired) {
-          // ensure user is nemid validated (has cpr attribute) -> throws if not
-          validateUserinfoCPR({ attributes, log: requestLogger, token });
-          cpr = attributes.cpr;
-        }
+        requestLogger.summary.cprStrictRequired = cprStrictRequired;
+        requestLogger.summary.cprOptional = cprOptional;
 
         // nemlogin provider used
         const isNemlogin = attributes?.idpUsed === "nemlogin";
@@ -353,35 +389,73 @@ module.exports = async function (fastify, opts) {
         // add to summary log
         requestLogger.summary.hasSessionKey = !!sessionKey;
 
-        // Holds the patronId
+        // Holds the auth result
+        let authResult;
+
+        // Holds patron details
         let patronId;
+        let patronType;
+        let authenticateStatus;
 
         // Holds the proxy response
         let proxyResponse;
 
-        try {
+        // Single execution attempt (auth + CPR + proxy)
+        const attempt = async ({ skipCache = false } = {}) => {
           if (patronIdRequired) {
-            patronId = await auth.fetch({
+            authResult = await auth.fetch({
               token,
               sessionKey,
               credentials,
               attributes,
+              skipCache,
             });
+
+            // set patronId
+            patronId = authResult?.patronId;
+            // set PatronType
+            patronType = authResult?.patronType;
+            // set authenticateStatus
+            authenticateStatus = authResult?.authenticateStatus;
           }
 
           // add to summary log
           requestLogger.summary.hasPatronId = !!patronId;
+          requestLogger.summary.patronType = patronType;
+          requestLogger.summary.authenticateStatus = authenticateStatus;
 
-          proxyResponse = await proxy.fetch({
+          // Passed to proxy for backwards compatible injection
+          let personIdentifier = null;
+
+          // Strict endpoints
+          if (cprStrictRequired) {
+            if (!patronType || patronType === "PERSON") {
+              validateUserinfoCPR({ attributes, log: requestLogger, token });
+              personIdentifier = attributes.cpr;
+            }
+          }
+
+          // Optional endpoints: (no hard fail)
+          else if (cprOptional) {
+            const isPersonLike = !patronType || patronType === "PERSON";
+            if (isPersonLike) {
+              personIdentifier = attributes?.cpr || attributes?.userId || null;
+            }
+          }
+
+          return proxy.fetch({
             sessionKey,
             patronId,
             credentials,
-            cpr,
+            personIdentifier,
           });
-        } catch (e) {
-          if (e.code === 401) {
-            // Calls to the FBS API may fail with 401
-            // This means sessionKey is expired and we have to login again
+        };
+
+        proxyResponse = await withSessionKeyRetry({
+          attempt,
+          isRetryable: (e) => e?.code === 401,
+          refreshSessionKey: async () => {
+            // Refresh sessionKey before retry
             sessionKey = await fbsLogin.fetch({
               token,
               credentials,
@@ -390,27 +464,8 @@ module.exports = async function (fastify, opts) {
 
             // add to summary log
             requestLogger.summary.sessionKeyRefetch = true;
-
-            if (patronIdRequired) {
-              patronId = await auth.fetch({
-                token,
-                sessionKey,
-                credentials,
-                attributes,
-                skipCache: true,
-              });
-            }
-            proxyResponse = await proxy.fetch({
-              sessionKey,
-              patronId,
-              credentials,
-              cpr,
-            });
-          } else {
-            // Give up, and pass the error to the caller
-            throw e;
-          }
-        }
+          },
+        });
 
         // Finally send the proxied response to the caller
         reply.code(proxyResponse.code).send(await proxyResponse.body);

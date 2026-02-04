@@ -1,17 +1,71 @@
 const Redis = require("ioredis");
 
+const falsy = new Set(["0", "false", "no", "n", "off"]);
+
+function isRedisDisabled() {
+  const enabled = String(process.env.REDIS_ENABLED || "").toLowerCase();
+  if (!enabled) {
+    return false;
+  }
+
+  return falsy.has(enabled);
+}
+
 const options = {
   host: process.env.REDIS_CLUSTER_HOST || process.env.REDIS_HOST,
   maxRetriesPerRequest: 5,
 };
 
+function buildKeyPrefix(namespace) {
+  const prefix = process.env.REDIS_PREFIX || "fbscmsadapter-1";
+  return prefix ? `${prefix}:${namespace}` : namespace;
+}
+
 /**
  * Creates a Redis connection pool
  */
 function createRedis({ log: appLogger, namespace }) {
+  const disabled = isRedisDisabled();
+  if (disabled) {
+    appLogger.warn("Redis disabled by flag", { namespace });
+    const noopRedis = {
+      get: async () => null,
+      set: async () => null,
+      flushall: async () => null,
+      disconnect: async () => null,
+      on: () => {},
+    };
+
+    function init({ log }) {
+      async function get(key) {
+        log.summary.datasources.redis = {
+          code: 204,
+          time: 0,
+          disabled: true,
+        };
+        log.info(`Redis disabled: GET ${namespace}:${key}`);
+        return null;
+      }
+
+      async function set(key, value) {
+        log.summary.datasources.redis = {
+          code: 204,
+          time: 0,
+          disabled: true,
+        };
+        log.info(`Redis disabled: SET ${namespace}:${key}->${value}`);
+      }
+
+      return { get, set };
+    }
+
+    return { init, redis: noopRedis };
+  }
+
+  const keyPrefix = buildKeyPrefix(namespace);
   const redis = process.env.REDIS_CLUSTER_HOST
-    ? new Redis.Cluster([options], { ...options, keyPrefix: namespace })
-    : new Redis({ ...options, keyPrefix: namespace });
+    ? new Redis.Cluster([options], { ...options, keyPrefix })
+    : new Redis({ ...options, keyPrefix });
 
   redis.on("error", (e) => {
     appLogger.error("Redis error", {

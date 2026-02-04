@@ -145,6 +145,21 @@ function ensureString(el) {
   return isString ? el : JSON.stringify(el);
 }
 
+function parseBody(body) {
+  if (!body) return {};
+  if (typeof body === "object") return body;
+  try {
+    return JSON.parse(body);
+  } catch {
+    return {};
+  }
+}
+
+function stringifyBody(body) {
+  if (!body) return undefined;
+  return typeof body === "string" ? body : JSON.stringify(body);
+}
+
 module.exports = {
   fetcher,
   nanoToMs,
@@ -152,4 +167,6 @@ module.exports = {
   extractAgencyPathFromUrl,
   getCredentials,
   ensureString,
+  parseBody,
+  stringifyBody,
 };
