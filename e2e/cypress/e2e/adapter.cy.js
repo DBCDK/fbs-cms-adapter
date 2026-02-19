@@ -18,6 +18,17 @@ const validSmaugFbsCredentials = {
   password: "some-password",
 };
 
+const validSmaugPrefixedFbsCredentials = {
+  agencyid: "some-prefixed-agencyid",
+  username: "some-username",
+  password: "some-password",
+};
+
+const prefixedAgency = {
+  prefix: "some_prefix",
+  allowedAgencies: "all",
+};
+
 const ownAgency = {
   allowedAgencies: "own",
 };
@@ -286,6 +297,49 @@ describe("Testing the FBS CMS adapter", () => {
           });
         }
       );
+    });
+
+    it("should give access for credentials with prefixed agencyid", () => {
+      /**
+       * Expected flow:
+       * 1. Adapter uses token to fetch smaug configuration
+       * 2. smaug configuration contains fbs->prefix
+       * 3. Use prefix (located in smaug fbs configuration) to lookup credentials from FBS_CMS_CREDENTIALS environment variable
+       * 4. sessionKey is fetched from Fbs with correct credentials
+       */
+
+      const agencyId = "some-prefixed-agencyid";
+      const token = "TOKEN_PREFIXED_AGENCY";
+
+      // Setup mocks
+      mockSmaug({
+        token,
+        status: 200,
+        body: {
+          fbs: prefixedAgency,
+          user: validSmaugUser,
+          agencyId,
+        },
+      });
+
+      // Setup mocks
+      mockFetchUserinfoAuthenticatedTokenSucces(token);
+
+      mockFetchFbsSessionKeySucces("/fbscms", agencyId);
+      mockFetchFbsCmsAnonymousPathSucces("/fbscms", agencyId);
+
+      cy.request({
+        url: `/external/agencyid/some/path`,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        failOnStatusCode: false,
+      }).then((res) => {
+        expect(res.status).to.eq(200);
+        expect(res.body).to.deep.include({
+          message: "from FBS CMS API",
+        });
+      });
     });
   });
 

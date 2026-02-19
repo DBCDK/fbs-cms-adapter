@@ -70,9 +70,11 @@ function parseCredentials(str = "") {
   const map = {};
   lines.forEach((line) => {
     const arr = line.split(",");
+    const splitAgencyId = arr[0].split("_");
+    const agencyId = splitAgencyId[splitAgencyId.length - 1];
     map[arr[0]] = {
-      agencyId: arr[0],
-      isil: `DK-${arr[0]}`,
+      agencyId,
+      isil: `DK-${agencyId}`,
       username: arr[1],
       password: arr[2],
       fbsUrl: arr[3] || process.env.FBS_CMS_API_URL,
@@ -83,11 +85,12 @@ function parseCredentials(str = "") {
 
 const credentialsList = parseCredentials(process.env.FBS_CMS_CREDENTIALS);
 
-function getCredentials({ agencyId, log }) {
-  const credentials = credentialsList?.[agencyId];
+function getCredentials({ prefix, agencyId, log }) {
+  const key = prefix ? `${prefix}_${agencyId}` : agencyId;
+  const credentials = credentialsList?.[key];
 
   if (!credentials?.username || !credentials?.password) {
-    log.debug(`Agency '${agencyId}' is missing FBS credentials`);
+    log.debug(`Agency '${key}' is missing FBS credentials`);
     throw {
       code: 403,
       body: {
