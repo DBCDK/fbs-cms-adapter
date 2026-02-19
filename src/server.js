@@ -349,6 +349,7 @@ module.exports = async function (fastify, opts) {
 
         // Get credentials for agencyId
         const credentials = getCredentials({
+          prefix: configuration?.fbs?.prefix,
           agencyId,
           log: requestLogger,
         });

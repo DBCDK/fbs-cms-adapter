@@ -33,6 +33,7 @@ services:
 
       # - |
       #   FBS_CMS_CREDENTIALS=
+      #   some_prefix_some-prefixed-agencyid,some-username,some-password,
       #   some-agencyid,some-username,some-password,
       #   some-other-agencyid,some-username,some-password,
       #   some-random-agencyid,some-username,some-password,
